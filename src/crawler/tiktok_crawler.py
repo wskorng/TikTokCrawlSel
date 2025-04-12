@@ -1,3 +1,6 @@
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -5,7 +8,6 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from datetime import datetime
 import random
 import time
-import logging
 from typing import Optional, List, Dict
 
 from ..database.models import MovieDescRawData, MovieStatRawData
@@ -62,27 +64,33 @@ class TikTokCrawler:
         """TikTokにログインする"""
         try:
             logger.info("TikTokにログインを試みます")
-            self.driver.get(f"{self.BASE_URL}/login")
+            self.driver.get(f"{self.BASE_URL}/login/phone-or-email/email")
             self._random_sleep(2.0, 4.0)
 
             # ログインフォームの要素を待機
-            # 注: 実際のセレクタは実装時に確認して更新する必要があります
             username_input = self.wait.until(
-                EC.presence_of_element_located((By.NAME, "username"))
+                EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='username']"))
             )
-            password_input = self.driver.find_element(By.NAME, "password")
+            self._random_sleep(1.0, 2.0)
 
-            # ユーザー名とパスワードを入力
+            # メールアドレスを入力
             username_input.send_keys(self.username)
-            self._random_sleep()
-            password_input.send_keys(self.password)
-            self._random_sleep()
+            self._random_sleep(1.5, 2.5)
 
-            # ログインボタンをクリック
-            login_button = self.driver.find_element(By.XPATH, "//button[@type='submit']")
+            # パスワード入力欄を探す
+            password_input = self.driver.find_element(By.CSS_SELECTOR, "input[type='password']")
+            password_input.send_keys(self.password)
+            self._random_sleep(1.0, 2.0)
+
+            # ログインボタンを探してクリック
+            login_button = self.wait.until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "button[type='submit']"))
+            )
+            self._random_sleep(1.0, 2.0)
             login_button.click()
 
             # ログイン完了を待機
+            # プロフィールアイコンが表示されるまで待機
             self.wait.until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "[data-e2e='profile-icon']"))
             )

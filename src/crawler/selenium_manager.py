@@ -1,7 +1,6 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium_stealth import stealth
 from ..logger import setup_logger
 
@@ -37,7 +36,7 @@ class SeleniumManager:
             options.add_experimental_option('excludeSwitches', ['enable-automation'])
             options.add_experimental_option('useAutomationExtension', False)
 
-            service = Service(ChromeDriverManager().install())
+            service = Service()
             self.driver = webdriver.Chrome(service=service, options=options)
             
             # selenium-stealthの設定を適用
