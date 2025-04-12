@@ -317,7 +317,7 @@ class TikTokCrawler:
         except Exception as e:
             logger.error(f"動画統計の保存に失敗: {e}")
 
-    def main(self, max_accounts: int = 10, max_videos_per_account: int = 50):
+    def crawl_about_favorite_accounts(self, max_accounts: int = 10, max_videos_per_account: int = 50):
         try:
             # クロール対象のお気に入りアカウントを取得
             favorite_accounts = self.favorite_account_repo.get_favorite_accounts(
@@ -374,3 +374,44 @@ class TikTokCrawler:
         except Exception as e:
             logger.error(f"クロール処理でエラー: {e}")
             raise
+
+
+def main():
+    try:
+        # データベース接続の初期化
+        db = Database()
+        
+        # 各リポジトリの初期化
+        crawler_account_repo = CrawlerAccountRepository(db)
+        favorite_account_repo = FavoriteAccountRepository(db)
+        video_repo = VideoRepository(db)
+        
+        # クローラーの初期化
+        crawler = TikTokCrawler(
+            crawler_account_repo=crawler_account_repo,
+            favorite_account_repo=favorite_account_repo,
+            video_repo=video_repo
+        )
+        
+        try:
+            # クローラーを開始（Selenium初期化とログイン）
+            crawler.start()
+            
+            # お気に入りアカウントのクロール
+            crawler.crawl_about_favorite_accounts()
+            
+        finally:
+            # クローラーの停止（Seleniumのクリーンアップ）
+            crawler.stop()
+            
+    except Exception as e:
+        logger.error(f"メイン処理でエラー: {e}")
+        raise
+    
+    finally:
+        # データベース接続のクリーンアップ
+        db.close()
+
+
+if __name__ == "__main__":
+    main()
