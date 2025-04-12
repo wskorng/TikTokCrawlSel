@@ -26,8 +26,8 @@ def show_all_data():
         tables = [
             "crawler_accounts",
             "favorite_accounts",
-            "movie_desc_raw_data",
-            "movie_stat_raw_data"
+            "video_desc_raw_data",
+            "video_stat_raw_data"
         ]
         
         for table in tables:

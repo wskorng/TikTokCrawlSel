@@ -38,7 +38,7 @@ CREATE_TABLES_SQL = [
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
-    CREATE TABLE IF NOT EXISTS movie_desc_raw_data (
+    CREATE TABLE IF NOT EXISTS video_desc_raw_data (
         id VARCHAR(255) PRIMARY KEY,  -- TikTokの動画IDそのまま
         url TEXT NOT NULL,
         account_username VARCHAR(255) NOT NULL,
@@ -54,17 +54,17 @@ CREATE_TABLES_SQL = [
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
-    CREATE TABLE IF NOT EXISTS movie_stat_raw_data (
+    CREATE TABLE IF NOT EXISTS video_stat_raw_data (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        movie_id VARCHAR(255) NOT NULL,
+        video_id VARCHAR(255) NOT NULL,
         play_count_text VARCHAR(255),  -- 片方しかとれないかもしれないので
         play_count INT,  -- パース失敗の可能性があるのでNULL許容
         like_count_text VARCHAR(255),  -- 片方しかとれないかもしれないので
         like_count INT,  -- パース失敗の可能性があるのでNULL許容
         crawled_at DATETIME NOT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (movie_id) REFERENCES movie_desc_raw_data(id),
-        INDEX idx_movie_id (movie_id),
+        FOREIGN KEY (video_id) REFERENCES video_desc_raw_data(id),
+        INDEX idx_video_id (video_id),
         INDEX idx_crawled_at (crawled_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """

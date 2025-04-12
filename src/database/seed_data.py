@@ -87,7 +87,7 @@ def insert_favorite_accounts(db: Database, crawler_account_id: int):
         )
         logger.info(f"お気に入りアカウント {account['username']} を追加しました（クローラーアカウントID: {crawler_account_id}）")
 
-def insert_sample_movie_data(db: Database):
+def insert_sample_video_data(db: Database):
     """サンプルの動画データを投入"""
     # 動画の基本情報
     desc_data = {
@@ -102,7 +102,7 @@ def insert_sample_movie_data(db: Database):
     }
     
     query = """
-        INSERT INTO movie_desc_raw_data (
+        INSERT INTO video_desc_raw_data (
             id, url, account_username, account_nickname,
             title, posted_at_text, posted_at, crawled_at
         ) VALUES (
@@ -126,7 +126,7 @@ def insert_sample_movie_data(db: Database):
     
     # 動画の統計情報
     stat_data = {
-        "movie_id": desc_data["id"],
+        "video_id": desc_data["id"],
         "play_count_text": "15.8M",
         "play_count": 15800000,
         "like_count_text": "394.7K",
@@ -135,8 +135,8 @@ def insert_sample_movie_data(db: Database):
     }
     
     query = """
-        INSERT INTO movie_stat_raw_data (
-            movie_id, play_count_text, play_count,
+        INSERT INTO video_stat_raw_data (
+            video_id, play_count_text, play_count,
             like_count_text, like_count, crawled_at
         ) VALUES (
             %s, %s, %s, %s, %s, %s
@@ -145,7 +145,7 @@ def insert_sample_movie_data(db: Database):
     db.execute_query(
         query,
         (
-            stat_data["movie_id"],
+            stat_data["video_id"],
             stat_data["play_count_text"],
             stat_data["play_count"],
             stat_data["like_count_text"],
@@ -172,7 +172,7 @@ def main():
         insert_favorite_accounts(db, crawler_account_ids[0])
         
         # サンプル動画データの投入
-        insert_sample_movie_data(db)
+        insert_sample_video_data(db)
         
         logger.info("テストデータの投入が完了しました")
         

@@ -21,7 +21,7 @@ class FavoriteAccount:
     last_crawled_at: Optional[datetime] # 初めてかもしれないので
 
 @dataclass
-class MovieDescRawData:
+class VideoDescRawData:
     id: str  # TikTokの動画IDそのまま
     url: str
     account_username: str
@@ -32,9 +32,9 @@ class MovieDescRawData:
     crawled_at: datetime
 
 @dataclass
-class MovieStatRawData:
+class VideoStatRawData:
     id: int # 自動採番
-    movie_id: str
+    video_id: str
     play_count_text: Optional[str] # 片方しかとれないかもしれないので
     play_count: Optional[int] # パースできないかもしれないので
     like_count_text: Optional[str] # 片方しかとれないかもしれないので
