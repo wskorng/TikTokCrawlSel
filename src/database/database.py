@@ -35,9 +35,14 @@ class Database:
                 cursor.execute(query, params)
             else:
                 cursor.execute(query)
-            self.connection.commit()
+            
+            # SELECT文の場合はコミットしない
+            if not query.strip().upper().startswith('SELECT'):
+                self.connection.commit()
+            
             return cursor
         except Error as e:
             logger.error(f"クエリ実行エラー: {e}")
-            self.connection.rollback()
+            if not query.strip().upper().startswith('SELECT'):
+                self.connection.rollback()
             raise

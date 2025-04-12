@@ -16,7 +16,12 @@ class CrawlerAccountRepository:
             SELECT id, username, password, proxy, is_alive, last_crawled_at
             FROM crawler_accounts
             WHERE is_alive = TRUE
-            ORDER BY last_crawled_at ASC NULLS FIRST
+            ORDER BY 
+                CASE 
+                    WHEN last_crawled_at IS NULL THEN 1
+                    ELSE 0
+                END DESC,
+                last_crawled_at ASC
             LIMIT 1
         """
         cursor = self.db.execute_query(query)
