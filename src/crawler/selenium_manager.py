@@ -18,7 +18,7 @@ class SeleniumManager:
                 options.add_argument(f'--proxy-server={self.proxy}')
             
             # その他の設定
-            options.add_argument('--disable-dev-shm-usage')  # 共有メモリ使用を無効化
+            options.add_argument('--no-sandbox')
             options.add_argument('--use-angle=gl')
             options.add_argument('--enable-features=Vulkan')
             options.add_argument('--disable-vulkan-surface')
@@ -28,14 +28,7 @@ class SeleniumManager:
             options.add_argument('--enable-hardware-overlays')
             options.add_argument('--enable-features=VaapiVideoDecoder')
             options.add_argument('--window-size=1280,720')
-            options.add_argument('--disable-notifications')  # 通知を無効化
-            options.add_argument('--disable-popup-blocking')  # ポップアップブロックを無効化
             
-            # ステルス設定
-            options.add_argument('--disable-blink-features=AutomationControlled')
-            options.add_experimental_option('excludeSwitches', ['enable-automation'])
-            options.add_experimental_option('useAutomationExtension', False)
-
             service = Service()
             self.driver = webdriver.Chrome(service=service, options=options)
             

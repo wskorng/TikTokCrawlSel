@@ -38,7 +38,7 @@ class TikTokCrawler:
         """クローラーを開始する"""
         try:
             self.driver = self.selenium_manager.setup_driver()
-            self.wait = WebDriverWait(self.driver, 10)
+            self.wait = WebDriverWait(self.driver, 60)  # タイムアウトを60秒に変更
             self._login()
         except Exception as e:
             logger.error(f"クローラーの開始に失敗: {e}")
