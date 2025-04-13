@@ -289,7 +289,7 @@ class TikTokCrawler:
             logger.error(f"動画ページの「クリエイターの動画」タブへの移動に失敗: {e}")
             return False
 
-    def get_play_stats_from_video_page_creator_videos_tab(self, max_videos: int = 30) -> Dict[str, Dict]:
+    def get_play_stats_from_video_page_creator_videos_tab(self, max_videos: int = 30) -> Dict[str, Dict]: #これタブ開かなくていいんじゃね
         video_stats = {}
         try:
             logger.debug(f"再生数の取得を開始（最大{max_videos}件）")
@@ -306,8 +306,8 @@ class TikTokCrawler:
                     video_url = video_link.get_attribute("href")
                     
                     # 再生数を取得（表示形式のまま）
-                    play_count_element = video_element.find_element(By.CSS_SELECTOR, "[data-e2e='video-views']")
-                    play_count_text = play_count_element.text
+                    play_count_element = video_element.find_element(By.CSS_SELECTOR, "strong[data-e2e='video-views'][class*='StrongVideoCount']")
+                    play_count_text = play_count_element.get_attribute("innerText") # ただの.textじゃ取れない
                     
                     video_stats[video_url] = {"count_text": play_count_text}
                     logger.debug(f"再生数を取得: {video_url} -> {play_count_text}")
@@ -366,7 +366,7 @@ class TikTokCrawler:
 
     def crawl_about_favorite_accounts(self, max_accounts: int = 10, max_videos_per_account: int = 50):
         try:
-            # クロール対象のお気に入りアカウントを取得
+            logger.info(f"クロール対象のお気に入りアカウント{max_accounts}件に対し処理を行います")
             favorite_accounts = self.favorite_account_repo.get_favorite_accounts(
                 self.crawler_account.id,
                 limit=max_accounts
@@ -420,6 +420,8 @@ class TikTokCrawler:
                 except Exception as e:
                     logger.error(f"アカウント {account.favorite_account_username} のクロール中にエラー: {e}")
                     continue
+            
+            logger.info(f"クロール対象のお気に入りアカウント{max_accounts}件に対し処理を完了しました")
 
         except Exception as e:
             logger.error(f"クロール処理でエラー: {e}")
