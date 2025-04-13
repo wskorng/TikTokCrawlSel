@@ -169,7 +169,13 @@ class TikTokCrawler:
 
     def navigate_to_video_page(self, video_url: str) -> bool:
         try:
-            self.driver.get(video_url)
+            # 現在のページにリンクがあればクリック、なければ直接移動
+            try:
+                video_link = self.driver.find_element(By.CSS_SELECTOR, f"a[href='{video_url}'")
+                video_link.click()
+            except NoSuchElementException:
+                self.driver.get(video_url)
+            
             self._random_sleep(2.0, 4.0)
             
             # 動画の詳細情報を待機
