@@ -197,6 +197,7 @@ class TikTokCrawler:
         logger.debug(f"動画ページに移動: {video_url}")
         try:
             # 現在のページにリンクがあればクリック、なければ直接移動
+            # クリックで移動しないと、「クリエイターの動画」ではなく「関連動画」タブになる。まあそれでもクローラーは動くけど目的の動画を集めれるかと言うとね
             try:
                 video_link = self.driver.find_element(By.CSS_SELECTOR, f"a[href='{video_url}'")
                 video_link.click()
@@ -207,7 +208,7 @@ class TikTokCrawler:
             
             # 動画の詳細情報を待機
             self.wait.until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "[data-e2e='video-title']"))
+                EC.presence_of_element_located((By.CSS_SELECTOR, "[data-e2e='user-title']"))
             )
             return True
             
@@ -218,28 +219,28 @@ class TikTokCrawler:
     def get_desc_from_video_page(self) -> Optional[Dict]:
         logger.debug(f"動画説明の取得を開始")
         try:
+            # アカウント情報を取得
+            account_username = self.driver.find_element(
+                By.CSS_SELECTOR, "[data-e2e='user-title']"
+            ).text
+            logger.debug(f"アカウント名を取得: {account_username}")
+
+            account_nickname = self.driver.find_element(
+                By.CSS_SELECTOR, "[data-e2e='user-subtitle']"
+            ).text
+            logger.debug(f"アカウントニックネームを取得: {account_nickname}")
+
             title = self.driver.find_element(
-                By.CSS_SELECTOR, "[data-e2e='video-title']"
+                By.CSS_SELECTOR, "[data-e2e='browse-video-desc']"
             ).text
             logger.debug(f"動画タイトルを取得: {title}")
             
             # 投稿日時を取得
             posted_at_text = self.driver.find_element(
-                By.CSS_SELECTOR, "[data-e2e='browser-nickname'] + span"
+                By.CSS_SELECTOR, "[data-e2e='browser-nickname'] span:last-child"
             ).text
             logger.debug(f"投稿日時を取得: {posted_at_text}")
             
-            # アカウント情報を取得
-            account_username = self.driver.find_element(
-                By.CSS_SELECTOR, "[data-e2e='browser-nickname']"
-            ).text
-            logger.debug(f"アカウント名を取得: {account_username}")
-
-            account_nickname = self.driver.find_element(
-                By.CSS_SELECTOR, "[data-e2e='user-title']"
-            ).text
-            logger.debug(f"アカウントニックネームを取得: {account_nickname}")
-
             return {
                 "title": title,
                 "posted_at_text": posted_at_text,
@@ -274,14 +275,13 @@ class TikTokCrawler:
             return False
     
     def navigate_to_video_page_creator_videos_tab(self) -> bool:
-        # 動画ページの「クリエイターの動画」タブに移動
         logger.debug("動画ページの「クリエイターの動画」タブに移動")
         try:
-            # タブを待機
-            tab = self.wait.until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "[data-e2e='creator-videos-tab']"))
+            # 2番目のタブ（クリエイターの動画）を待機して取得
+            creator_videos_tab = self.wait.until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "[class*='DivTabMenuContainer'] [class*='DivTabItemContainer']:nth-child(2) [class*='DivTabItem']"))
             )
-            tab.click()
+            creator_videos_tab.click()
             self._random_sleep(1.0, 2.0)
             return True
             
