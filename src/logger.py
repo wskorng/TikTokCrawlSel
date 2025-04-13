@@ -13,7 +13,7 @@ def setup_logger(name: str) -> logging.Logger:
         設定済みのロガーインスタンス
     """
     logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     # フォーマッターの作成
     formatter = logging.Formatter(
@@ -26,12 +26,12 @@ def setup_logger(name: str) -> logging.Logger:
         maxBytes=10*1024*1024,  # 10MB
         backupCount=5
     )
-    file_handler.setLevel(logging.DEBUG)
+    file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(formatter)
 
     # コンソールハンドラーの設定
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.DEBUG)
+    console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(formatter)
 
     # ハンドラーの追加
