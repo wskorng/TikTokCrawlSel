@@ -1,4 +1,4 @@
-# TikTok Crawler
+# TikTok Light Crawler on Selenium
 
 TikTok動画の再生数といいね数の推移データを収集するクローラー。約30,000動画のデータ収集を目標としています。
 
