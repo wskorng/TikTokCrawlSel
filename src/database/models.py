@@ -22,7 +22,8 @@ class FavoriteAccount:
 
 @dataclass
 class VideoDescRawData:
-    id: str  # TikTokの動画IDそのまま
+    id: int  # 自動採番
+    video_id: str  # TikTokの動画IDそのまま
     url: str
     account_username: str
     account_nickname: str

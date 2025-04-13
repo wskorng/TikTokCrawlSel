@@ -39,7 +39,8 @@ CREATE_TABLES_SQL = [
     """,
     """
     CREATE TABLE IF NOT EXISTS video_desc_raw_data (
-        id VARCHAR(255) PRIMARY KEY,  -- TikTokの動画IDそのまま
+        id INT AUTO_INCREMENT PRIMARY KEY,  -- 自動採番
+        video_id VARCHAR(255) NOT NULL UNIQUE,  -- TikTokの動画IDそのまま
         url TEXT NOT NULL,
         account_username VARCHAR(255) NOT NULL,
         account_nickname VARCHAR(255) NOT NULL,
@@ -48,6 +49,7 @@ CREATE_TABLES_SQL = [
         posted_at DATETIME,  -- パース失敗の可能性があるのでNULL許容
         crawled_at DATETIME NOT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_video_id (video_id),
         INDEX idx_account_username (account_username),
         INDEX idx_posted_at (posted_at),
         INDEX idx_crawled_at (crawled_at)
@@ -61,7 +63,6 @@ CREATE_TABLES_SQL = [
         count INT,  -- パース後の数値
         crawled_at DATETIME NOT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (video_id) REFERENCES video_desc_raw_data(id),
         INDEX idx_video_id (video_id),
         INDEX idx_crawled_at (crawled_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -74,7 +75,6 @@ CREATE_TABLES_SQL = [
         count INT,  -- パース後の数値
         crawled_at DATETIME NOT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (video_id) REFERENCES video_desc_raw_data(id),
         INDEX idx_video_id (video_id),
         INDEX idx_crawled_at (crawled_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci

@@ -105,7 +105,7 @@ class VideoRepository:
         """動画の説明データを保存"""
         query = """
             INSERT INTO video_desc_raw_data (
-                id, url, account_username, account_nickname,
+                video_id, url, account_username, account_nickname,
                 title, posted_at_text, posted_at, crawled_at
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
@@ -118,7 +118,7 @@ class VideoRepository:
                 crawled_at = VALUES(crawled_at)
         """
         self.db.execute_query(query, (
-            desc.id, desc.url, desc.account_username, desc.account_nickname,
+            desc.video_id, desc.url, desc.account_username, desc.account_nickname,
             desc.title, desc.posted_at_text, desc.posted_at, desc.crawled_at
         ))
 
@@ -146,7 +146,7 @@ class VideoRepository:
 
     def get_existing_video_ids(self) -> Set[str]:
         """既存の動画IDを取得"""
-        query = "SELECT id FROM video_desc_raw_data"
+        query = "SELECT video_id FROM video_desc_raw_data"
         cursor = self.db.execute_query(query)
         rows = cursor.fetchall()
         cursor.close()

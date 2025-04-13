@@ -139,10 +139,12 @@ class TikTokCrawler:
     def get_like_stats_from_user_page(self, max_videos: int = 50) -> Dict[str, Dict]:
         video_stats = {}
         try:
+            logger.debug(f"いいね数の取得を開始（最大{max_videos}件）")
             # 動画要素を取得
             video_elements = self.wait.until(
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[data-e2e='user-post-item']"))
             )
+            logger.debug(f"動画要素を{len(video_elements)}件取得")
             
             for video_element in video_elements[:max_videos]:
                 try:
@@ -155,6 +157,7 @@ class TikTokCrawler:
                     like_count_text = like_count_element.text
                     
                     video_stats[video_url] = {"count_text": like_count_text}
+                    logger.debug(f"いいね数を取得: {video_url} -> {like_count_text}")
                     
                 except NoSuchElementException as e:
                     logger.warning(f"動画情報の取得に失敗: {e}")
@@ -169,18 +172,19 @@ class TikTokCrawler:
     def save_video_like_stats(self, like_stats: Dict[str, Dict]):
         """動画のいいね数データを保存"""
         try:
+            logger.debug(f"いいね数データの保存を開始（{len(like_stats)}件）")
             now = datetime.now()
             
             for url, stat in like_stats.items():
                 video_id = url.split("/")[-1]
                 like_stat = VideoLikeStatRawData(
-                    id=None,  # 自動採番されるので
                     video_id=video_id,
                     count_text=stat["count_text"],
                     count=None,  # 後でパースする
                     crawled_at=now
                 )
                 self.video_repo.save_video_like_stats(like_stat)
+                logger.debug(f"いいね数データを保存: {video_id} -> {stat['count_text']}")
         except Exception as e:
             logger.error(f"いいね数データの保存に失敗: {e}")
 
@@ -232,7 +236,7 @@ class TikTokCrawler:
                 "account_username": account_username,
                 "account_nickname": account_nickname,
                 "url": self.driver.current_url,
-                "id": self.driver.current_url.split("/")[-1]
+                "video_id": self.driver.current_url.split("/")[-1]
             }
 
         except Exception as e:
@@ -243,7 +247,7 @@ class TikTokCrawler:
         """動画の説明データを保存"""
         try:
             desc = VideoDescRawData(
-                id=desc_data["id"],
+                video_id=desc_data["video_id"],
                 url=desc_data["url"],
                 account_username=desc_data["account_username"],
                 account_nickname=desc_data["account_nickname"],
@@ -276,10 +280,12 @@ class TikTokCrawler:
     def get_play_stats_from_video_page_creator_videos_tab(self, max_videos: int = 30) -> Dict[str, Dict]:
         video_stats = {}
         try:
+            logger.debug(f"再生数の取得を開始（最大{max_videos}件）")
             # 動画要素を取得
             video_elements = self.wait.until(
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[data-e2e='user-post-item']"))
             )
+            logger.debug(f"動画要素を{len(video_elements)}件取得")
             
             for video_element in video_elements[:max_videos]:
                 try:
@@ -292,6 +298,7 @@ class TikTokCrawler:
                     play_count_text = play_count_element.text
                     
                     video_stats[video_url] = {"count_text": play_count_text}
+                    logger.debug(f"再生数を取得: {video_url} -> {play_count_text}")
                     
                 except NoSuchElementException as e:
                     logger.warning(f"動画情報の取得に失敗: {e}")
@@ -306,18 +313,19 @@ class TikTokCrawler:
     def save_video_play_stats(self, play_stats: Dict[str, Dict]):
         """動画の再生数データを保存"""
         try:
+            logger.debug(f"再生数データの保存を開始（{len(play_stats)}件）")
             now = datetime.now()
             
             for url, stat in play_stats.items():
                 video_id = url.split("/")[-1]
                 play_stat = VideoPlayStatRawData(
-                    id=None,  # 自動採番されるので
                     video_id=video_id,
                     count_text=stat["count_text"],
                     count=None,  # 後でパースする
                     crawled_at=now
                 )
                 self.video_repo.save_video_play_stats(play_stat)
+                logger.debug(f"再生数データを保存: {video_id} -> {stat['count_text']}")
         except Exception as e:
             logger.error(f"再生数データの保存に失敗: {e}")
 
@@ -354,6 +362,7 @@ class TikTokCrawler:
 
             # 既存の動画IDを取得（重複チェック用）
             existing_video_ids = self.video_repo.get_existing_video_ids()
+            logger.debug(f"既存の動画ID数: {len(existing_video_ids)}")
 
             # 各アカウントの動画をクロール
             for account in favorite_accounts:
@@ -361,6 +370,7 @@ class TikTokCrawler:
                     logger.info(f"アカウント {account.favorite_account_username} のクロールを開始")
 
                     # アカウントページに移動
+                    logger.debug(f"アカウント {account.favorite_account_username} のページに移動")
                     if not self.navigate_to_user_page(account.favorite_account_username):
                         continue
                     self.scroll_page(3)
@@ -371,6 +381,7 @@ class TikTokCrawler:
 
                     # 動画ページに移動
                     first_url = next(iter(video_like_stats.keys()))
+                    logger.debug(f"動画ページに移動: {first_url}")
                     if not self.navigate_to_video_page(first_url):
                         continue
                     video_desc = self.get_desc_from_video_page()
@@ -379,6 +390,7 @@ class TikTokCrawler:
                     self.save_video_desc(video_desc)
 
                     # 動画ページの「クリエイターの動画」タブに移動
+                    logger.debug("クリエイターの動画タブに移動")
                     if not self.navigate_to_video_page_creator_videos_tab():
                         continue
                     self.scroll_page(3)

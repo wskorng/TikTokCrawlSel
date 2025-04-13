@@ -91,7 +91,7 @@ def insert_sample_video_data(db: Database):
     """サンプルの動画データを投入"""
     # 動画の基本情報
     desc_data = {
-        "id": "7460937381265411370",
+        "video_id": "7460937381265411370",
         "url": "https://www.tiktok.com/@tiktok/video/7460937381265411370",
         "account_username": "tiktok",
         "account_nickname": "TikTok",
@@ -103,7 +103,7 @@ def insert_sample_video_data(db: Database):
     
     query = """
         INSERT INTO video_desc_raw_data (
-            id, url, account_username, account_nickname,
+            video_id, url, account_username, account_nickname,
             title, posted_at_text, posted_at, crawled_at
         ) VALUES (
             %s, %s, %s, %s, %s, %s, %s, %s
@@ -112,7 +112,7 @@ def insert_sample_video_data(db: Database):
     db.execute_query(
         query,
         (
-            desc_data["id"],
+            desc_data["video_id"],
             desc_data["url"],
             desc_data["account_username"],
             desc_data["account_nickname"],
@@ -122,11 +122,11 @@ def insert_sample_video_data(db: Database):
             desc_data["crawled_at"]
         )
     )
-    logger.info(f"サンプル動画データ {desc_data['id']} を追加しました")
+    logger.info(f"サンプル動画データ {desc_data['video_id']} を追加しました")
     
     # 動画の再生数の統計情報
     play_stat_data = {
-        "video_id": desc_data["id"],
+        "video_id": desc_data["video_id"],
         "count_text": "15.8M",
         "count": 15800000,
         "crawled_at": datetime.now()
@@ -152,7 +152,7 @@ def insert_sample_video_data(db: Database):
 
     # 動画のいいね数の統計情報
     like_stat_data = {
-        "video_id": desc_data["id"],
+        "video_id": desc_data["video_id"],
         "count_text": "394.7K",
         "count": 394700,
         "crawled_at": datetime.now()
