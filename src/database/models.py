@@ -32,11 +32,17 @@ class VideoDescRawData:
     crawled_at: datetime
 
 @dataclass
-class VideoStatRawData:
+class VideoPlayStatRawData:
     id: int # 自動採番
     video_id: str
-    play_count_text: Optional[str] # 片方しかとれないかもしれないので
-    play_count: Optional[int] # パースできないかもしれないので
-    like_count_text: Optional[str] # 片方しかとれないかもしれないので
-    like_count: Optional[int] # パースできないかもしれないので
+    count_text: str # 表示形式のままの再生数
+    count: Optional[int] # パース後の数値
+    crawled_at: datetime
+
+@dataclass
+class VideoLikeStatRawData:
+    id: int # 自動採番
+    video_id: str
+    count_text: str # 表示形式のままのいいね数
+    count: Optional[int] # パース後の数値
     crawled_at: datetime

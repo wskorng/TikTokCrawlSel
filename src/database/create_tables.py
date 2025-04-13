@@ -54,13 +54,24 @@ CREATE_TABLES_SQL = [
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
-    CREATE TABLE IF NOT EXISTS video_stat_raw_data (
+    CREATE TABLE IF NOT EXISTS video_play_stat_raw_data (
         id INT AUTO_INCREMENT PRIMARY KEY,
         video_id VARCHAR(255) NOT NULL,
-        play_count_text VARCHAR(255),  -- 片方しかとれないかもしれないので
-        play_count INT,  -- パース失敗の可能性があるのでNULL許容
-        like_count_text VARCHAR(255),  -- 片方しかとれないかもしれないので
-        like_count INT,  -- パース失敗の可能性があるのでNULL許容
+        count_text VARCHAR(255) NOT NULL,  -- 表示形式のままの再生数
+        count INT,  -- パース後の数値
+        crawled_at DATETIME NOT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (video_id) REFERENCES video_desc_raw_data(id),
+        INDEX idx_video_id (video_id),
+        INDEX idx_crawled_at (crawled_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS video_like_stat_raw_data (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        video_id VARCHAR(255) NOT NULL,
+        count_text VARCHAR(255) NOT NULL,  -- 表示形式のままのいいね数
+        count INT,  -- パース後の数値
         crawled_at DATETIME NOT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (video_id) REFERENCES video_desc_raw_data(id),

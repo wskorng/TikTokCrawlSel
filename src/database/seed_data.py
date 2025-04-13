@@ -124,36 +124,60 @@ def insert_sample_video_data(db: Database):
     )
     logger.info(f"サンプル動画データ {desc_data['id']} を追加しました")
     
-    # 動画の統計情報
-    stat_data = {
+    # 動画の再生数の統計情報
+    play_stat_data = {
         "video_id": desc_data["id"],
-        "play_count_text": "15.8M",
-        "play_count": 15800000,
-        "like_count_text": "394.7K",
-        "like_count": 394700,
+        "count_text": "15.8M",
+        "count": 15800000,
         "crawled_at": datetime.now()
     }
     
     query = """
-        INSERT INTO video_stat_raw_data (
-            video_id, play_count_text, play_count,
-            like_count_text, like_count, crawled_at
+        INSERT INTO video_play_stat_raw_data (
+            video_id, count_text, count, crawled_at
         ) VALUES (
-            %s, %s, %s, %s, %s, %s
+            %s, %s, %s, %s
         )
     """
     db.execute_query(
         query,
         (
-            stat_data["video_id"],
-            stat_data["play_count_text"],
-            stat_data["play_count"],
-            stat_data["like_count_text"],
-            stat_data["like_count"],
-            stat_data["crawled_at"]
+            play_stat_data["video_id"],
+            play_stat_data["count_text"],
+            play_stat_data["count"],
+            play_stat_data["crawled_at"]
         )
     )
-    logger.info(f"サンプル統計データを追加しました")
+    logger.info(f"サンプル再生数統計データを追加しました")
+
+    # 動画のいいね数の統計情報
+    like_stat_data = {
+        "video_id": desc_data["id"],
+        "count_text": "394.7K",
+        "count": 394700,
+        "crawled_at": datetime.now()
+    }
+    
+    query = """
+        INSERT INTO video_like_stat_raw_data (
+            video_id, count_text, count, crawled_at
+        ) VALUES (
+            %s, %s, %s, %s
+        )
+    """
+    db.execute_query(
+        query,
+        (
+            like_stat_data["video_id"],
+            like_stat_data["count_text"],
+            like_stat_data["count"],
+            like_stat_data["crawled_at"]
+        )
+    )
+    logger.info(f"サンプルいいね数統計データを追加しました")
+
+
+
 
 def main():
     """テストデータの投入を実行"""

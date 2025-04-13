@@ -27,7 +27,8 @@ def show_all_data():
             "crawler_accounts",
             "favorite_accounts",
             "video_desc_raw_data",
-            "video_stat_raw_data"
+            "video_play_stat_raw_data",
+            "video_like_stat_raw_data"
         ]
         
         for table in tables:

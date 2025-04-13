@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional, Set
 from .database import Database
-from .models import CrawlerAccount, FavoriteAccount, VideoDescRawData, VideoStatRawData
+from .models import CrawlerAccount, FavoriteAccount, VideoDescRawData, VideoPlayStatRawData, VideoLikeStatRawData
 from ..logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -122,17 +122,26 @@ class VideoRepository:
             desc.title, desc.posted_at_text, desc.posted_at, desc.crawled_at
         ))
 
-    def save_video_stats(self, stats: VideoStatRawData):
-        """動画の統計データを保存"""
+    def save_video_play_stats(self, stats: VideoPlayStatRawData):
+        """動画の再生数データを保存"""
         query = """
-            INSERT INTO video_stat_raw_data (
-                video_id, play_count_text, play_count,
-                like_count_text, like_count, crawled_at
-            ) VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO video_play_stat_raw_data (
+                video_id, count_text, count, crawled_at
+            ) VALUES (%s, %s, %s, %s)
         """
         self.db.execute_query(query, (
-            stats.video_id, stats.play_count_text, stats.play_count,
-            stats.like_count_text, stats.like_count, stats.crawled_at
+            stats.video_id, stats.count_text, stats.count, stats.crawled_at
+        ))
+
+    def save_video_like_stats(self, stats: VideoLikeStatRawData):
+        """動画のいいね数データを保存"""
+        query = """
+            INSERT INTO video_like_stat_raw_data (
+                video_id, count_text, count, crawled_at
+            ) VALUES (%s, %s, %s, %s)
+        """
+        self.db.execute_query(query, (
+            stats.video_id, stats.count_text, stats.count, stats.crawled_at
         ))
 
     def get_existing_video_ids(self) -> Set[str]:
