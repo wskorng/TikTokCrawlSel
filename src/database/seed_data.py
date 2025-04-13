@@ -127,6 +127,8 @@ def insert_sample_video_data(db: Database):
     # 動画の再生数の統計情報
     play_stat_data = {
         "video_id": desc_data["video_id"],
+        "url": desc_data["url"],
+        "account_username": desc_data["account_username"],
         "count_text": "15.8M",
         "count": 15800000,
         "crawled_at": datetime.now()
@@ -134,15 +136,17 @@ def insert_sample_video_data(db: Database):
     
     query = """
         INSERT INTO video_play_stat_raw_data (
-            video_id, count_text, count, crawled_at
+            video_id, url, account_username, count_text, count, crawled_at
         ) VALUES (
-            %s, %s, %s, %s
+            %s, %s, %s, %s, %s, %s
         )
     """
     db.execute_query(
         query,
         (
             play_stat_data["video_id"],
+            play_stat_data["url"],
+            play_stat_data["account_username"],
             play_stat_data["count_text"],
             play_stat_data["count"],
             play_stat_data["crawled_at"]
@@ -153,6 +157,8 @@ def insert_sample_video_data(db: Database):
     # 動画のいいね数の統計情報
     like_stat_data = {
         "video_id": desc_data["video_id"],
+        "url": desc_data["url"],
+        "account_username": desc_data["account_username"],
         "count_text": "394.7K",
         "count": 394700,
         "crawled_at": datetime.now()
@@ -160,15 +166,17 @@ def insert_sample_video_data(db: Database):
     
     query = """
         INSERT INTO video_like_stat_raw_data (
-            video_id, count_text, count, crawled_at
+            video_id, url, account_username, count_text, count, crawled_at
         ) VALUES (
-            %s, %s, %s, %s
+            %s, %s, %s, %s, %s, %s
         )
     """
     db.execute_query(
         query,
         (
             like_stat_data["video_id"],
+            like_stat_data["url"],
+            like_stat_data["account_username"],
             like_stat_data["count_text"],
             like_stat_data["count"],
             like_stat_data["crawled_at"]

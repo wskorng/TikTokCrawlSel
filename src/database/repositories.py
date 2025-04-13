@@ -126,22 +126,24 @@ class VideoRepository:
         """動画の再生数データを保存"""
         query = """
             INSERT INTO video_play_stat_raw_data (
-                video_id, count_text, count, crawled_at
-            ) VALUES (%s, %s, %s, %s)
+                video_id, url, account_username, count_text, count, crawled_at
+            ) VALUES (%s, %s, %s, %s, %s, %s)
         """
         self.db.execute_query(query, (
-            stats.video_id, stats.count_text, stats.count, stats.crawled_at
+            stats.video_id, stats.url, stats.account_username,
+            stats.count_text, stats.count, stats.crawled_at
         ))
 
     def save_video_like_stats(self, stats: VideoLikeStatRawData):
         """動画のいいね数データを保存"""
         query = """
             INSERT INTO video_like_stat_raw_data (
-                video_id, count_text, count, crawled_at
-            ) VALUES (%s, %s, %s, %s)
+                video_id, url, account_username, count_text, count, crawled_at
+            ) VALUES (%s, %s, %s, %s, %s, %s)
         """
         self.db.execute_query(query, (
-            stats.video_id, stats.count_text, stats.count, stats.crawled_at
+            stats.video_id, stats.url, stats.account_username,
+            stats.count_text, stats.count, stats.crawled_at
         ))
 
     def get_existing_video_ids(self) -> Set[str]:

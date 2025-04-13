@@ -122,6 +122,7 @@ class TikTokCrawler:
             raise
 
     def navigate_to_user_page(self, username: str) -> bool:
+        logger.debug(f"アカウント {username} のページに移動")
         try:
             self.driver.get(f"{self.BASE_URL}/@{username}")
             self._random_sleep(2.0, 4.0)
@@ -177,8 +178,12 @@ class TikTokCrawler:
             
             for url, stat in like_stats.items():
                 video_id = url.split("/")[-1]
+                account_username = url.split("/")[2].strip("@")
                 like_stat = VideoLikeStatRawData(
+                    id=None,
                     video_id=video_id,
+                    url=url,
+                    account_username=account_username,  
                     count_text=stat["count_text"],
                     count=None,  # 後でパースする
                     crawled_at=now
@@ -189,6 +194,7 @@ class TikTokCrawler:
             logger.error(f"いいね数データの保存に失敗: {e}")
 
     def navigate_to_video_page(self, video_url: str) -> bool:
+        logger.debug(f"動画ページに移動: {video_url}")
         try:
             # 現在のページにリンクがあればクリック、なければ直接移動
             try:
@@ -210,25 +216,29 @@ class TikTokCrawler:
             return False
 
     def get_desc_from_video_page(self) -> Optional[Dict]:
-        """動画ページから説明データを取得"""
+        logger.debug(f"動画説明の取得を開始")
         try:
-            # タイトルを取得
             title = self.driver.find_element(
                 By.CSS_SELECTOR, "[data-e2e='video-title']"
             ).text
+            logger.debug(f"動画タイトルを取得: {title}")
             
             # 投稿日時を取得
             posted_at_text = self.driver.find_element(
                 By.CSS_SELECTOR, "[data-e2e='browser-nickname'] + span"
             ).text
+            logger.debug(f"投稿日時を取得: {posted_at_text}")
             
             # アカウント情報を取得
             account_username = self.driver.find_element(
                 By.CSS_SELECTOR, "[data-e2e='browser-nickname']"
             ).text
+            logger.debug(f"アカウント名を取得: {account_username}")
+
             account_nickname = self.driver.find_element(
                 By.CSS_SELECTOR, "[data-e2e='user-title']"
             ).text
+            logger.debug(f"アカウントニックネームを取得: {account_nickname}")
 
             return {
                 "title": title,
@@ -247,6 +257,7 @@ class TikTokCrawler:
         """動画の説明データを保存"""
         try:
             desc = VideoDescRawData(
+                id=None,
                 video_id=desc_data["video_id"],
                 url=desc_data["url"],
                 account_username=desc_data["account_username"],
@@ -263,7 +274,8 @@ class TikTokCrawler:
             return False
     
     def navigate_to_video_page_creator_videos_tab(self) -> bool:
-        # 「クリエイターの動画」タブをクリック
+        # 動画ページの「クリエイターの動画」タブに移動
+        logger.debug("動画ページの「クリエイターの動画」タブに移動")
         try:
             # タブを待機
             tab = self.wait.until(
@@ -274,7 +286,7 @@ class TikTokCrawler:
             return True
             
         except Exception as e:
-            logger.error(f"クリエイターの動画タブへの移動に失敗: {e}")
+            logger.error(f"動画ページの「クリエイターの動画」タブへの移動に失敗: {e}")
             return False
 
     def get_play_stats_from_video_page_creator_videos_tab(self, max_videos: int = 30) -> Dict[str, Dict]:
@@ -318,8 +330,12 @@ class TikTokCrawler:
             
             for url, stat in play_stats.items():
                 video_id = url.split("/")[-1]
+                account_username = url.split("/")[2].strip("@")
                 play_stat = VideoPlayStatRawData(
+                    id=None,
                     video_id=video_id,
+                    url=url,
+                    account_username=account_username,
                     count_text=stat["count_text"],
                     count=None,  # 後でパースする
                     crawled_at=now
@@ -370,7 +386,6 @@ class TikTokCrawler:
                     logger.info(f"アカウント {account.favorite_account_username} のクロールを開始")
 
                     # アカウントページに移動
-                    logger.debug(f"アカウント {account.favorite_account_username} のページに移動")
                     if not self.navigate_to_user_page(account.favorite_account_username):
                         continue
                     self.scroll_page(3)
@@ -381,7 +396,6 @@ class TikTokCrawler:
 
                     # 動画ページに移動
                     first_url = next(iter(video_like_stats.keys()))
-                    logger.debug(f"動画ページに移動: {first_url}")
                     if not self.navigate_to_video_page(first_url):
                         continue
                     video_desc = self.get_desc_from_video_page()
@@ -389,8 +403,6 @@ class TikTokCrawler:
                         continue
                     self.save_video_desc(video_desc)
 
-                    # 動画ページの「クリエイターの動画」タブに移動
-                    logger.debug("クリエイターの動画タブに移動")
                     if not self.navigate_to_video_page_creator_videos_tab():
                         continue
                     self.scroll_page(3)

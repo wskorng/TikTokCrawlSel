@@ -59,11 +59,14 @@ CREATE_TABLES_SQL = [
     CREATE TABLE IF NOT EXISTS video_play_stat_raw_data (
         id INT AUTO_INCREMENT PRIMARY KEY,
         video_id VARCHAR(255) NOT NULL,
+        url TEXT NOT NULL,
+        account_username VARCHAR(255) NOT NULL,
         count_text VARCHAR(255) NOT NULL,  -- 表示形式のままの再生数
         count INT,  -- パース後の数値
         crawled_at DATETIME NOT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_video_id (video_id),
+        INDEX idx_account_username (account_username),
         INDEX idx_crawled_at (crawled_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
@@ -71,11 +74,14 @@ CREATE_TABLES_SQL = [
     CREATE TABLE IF NOT EXISTS video_like_stat_raw_data (
         id INT AUTO_INCREMENT PRIMARY KEY,
         video_id VARCHAR(255) NOT NULL,
+        url TEXT NOT NULL,
+        account_username VARCHAR(255) NOT NULL,
         count_text VARCHAR(255) NOT NULL,  -- 表示形式のままのいいね数
         count INT,  -- パース後の数値
         crawled_at DATETIME NOT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_video_id (video_id),
+        INDEX idx_account_username (account_username),
         INDEX idx_crawled_at (crawled_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """

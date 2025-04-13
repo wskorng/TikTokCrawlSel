@@ -36,6 +36,8 @@ class VideoDescRawData:
 class VideoPlayStatRawData:
     id: int # 自動採番
     video_id: str
+    url: str
+    account_username: str
     count_text: str # 表示形式のままの再生数
     count: Optional[int] # パース後の数値
     crawled_at: datetime
@@ -44,6 +46,8 @@ class VideoPlayStatRawData:
 class VideoLikeStatRawData:
     id: int # 自動採番
     video_id: str
+    url: str
+    account_username: str
     count_text: str # 表示形式のままのいいね数
     count: Optional[int] # パース後の数値
     crawled_at: datetime
