@@ -8,7 +8,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from datetime import datetime
 import random
 import time
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 
 from ..database.models import VideoDescRawData, VideoPlayStatRawData, VideoLikeStatRawData, CrawlerAccount, FavoriteAccount
 from ..database.repositories import CrawlerAccountRepository, FavoriteAccountRepository, VideoRepository
@@ -40,13 +40,17 @@ class TikTokCrawler:
         self.driver = None
         self.wait = None
         
-    def start(self):
-        """クローラーを開始する"""
+    def start(self, crawler_account_id: Optional[int] = None): # crawler_account_id が None なら適当に持ってくる
         try:
-            # 利用可能なクローラーアカウントを取得
-            self.crawler_account = self.crawler_account_repo.get_an_available_crawler_account()
-            if not self.crawler_account:
-                raise Exception("利用可能なクローラーアカウントが見つかりません")
+            # クローラーアカウントを取得
+            if crawler_account_id is not None:
+                self.crawler_account = self.crawler_account_repo.get_crawler_account_by_id(crawler_account_id)
+                if not self.crawler_account:
+                    raise Exception(f"指定されたクローラーアカウント（ID: {crawler_account_id}）が見つかりません")
+            else:
+                self.crawler_account = self.crawler_account_repo.get_an_available_crawler_account()
+                if not self.crawler_account:
+                    raise Exception("利用可能なクローラーアカウントがありません")
 
             # Seleniumの設定
             self.selenium_manager = SeleniumManager(self.crawler_account.proxy)
@@ -137,7 +141,7 @@ class TikTokCrawler:
             logger.error(f"ユーザー {username} のページへの移動に失敗: {e}")
             return False
 
-    def get_like_stats_from_user_page(self, max_videos: int = 50) -> List[Tuple[str, str]]:
+    def get_like_stats_from_user_page(self, max_videos: int = 50) -> List[Dict[str, str]]:
         video_stats = []
         try:
             logger.debug(f"いいね数の取得を開始（最大{max_videos}件）")
@@ -157,7 +161,7 @@ class TikTokCrawler:
                     like_count_element = video_element.find_element(By.CSS_SELECTOR, "[data-e2e='video-views']") # video-viewsといいながらいいね数なんだよな
                     like_count_text = like_count_element.text
                     
-                    video_stats.append((video_url, like_count_text))
+                    video_stats.append({"url": video_url, "count_text": like_count_text})
                     logger.debug(f"いいね数を取得: {video_url} -> {like_count_text}")
                     
                 except NoSuchElementException as e:
@@ -170,13 +174,15 @@ class TikTokCrawler:
             logger.error(f"動画一覧の取得に失敗: {e}")
             return {}
 
-    def save_video_like_stats(self, like_stats: List[Tuple[str, str]]):
+    def save_video_like_stats(self, like_stats: List[Dict[str, str]]):
         """動画のいいね数データを保存"""
         try:
             logger.debug(f"いいね数データの保存を開始（{len(like_stats)}件）")
             now = datetime.now()
             
-            for url, like_count_text in like_stats:
+            for stat in like_stats:
+                url = stat["url"]
+                like_count_text = stat["count_text"]
                 video_id = url.split("/")[-1]
                 account_username = url.split("/")[2].strip("@")
                 like_stat = VideoLikeStatRawData(
@@ -289,7 +295,7 @@ class TikTokCrawler:
             logger.error(f"動画ページの「クリエイターの動画」タブへの移動に失敗: {e}")
             return False
 
-    def get_play_stats_from_video_page_creator_videos_tab(self, max_videos: int = 30) -> List[Tuple[str, str]]: #これタブ開かなくていいんじゃね
+    def get_play_stats_from_video_page_creator_videos_tab(self, max_videos: int = 30) -> List[Dict[str, str]]: #これタブ開かなくていいんじゃね
         video_stats = []
         try:
             logger.debug(f"再生数の取得を開始（最大{max_videos}件）")
@@ -309,7 +315,7 @@ class TikTokCrawler:
                     play_count_element = video_element.find_element(By.CSS_SELECTOR, "strong[data-e2e='video-views'][class*='StrongVideoCount']")
                     play_count_text = play_count_element.get_attribute("innerText") # ただの.textじゃ取れない
                     
-                    video_stats.append((video_url, play_count_text))
+                    video_stats.append({"url": video_url, "count_text": play_count_text})
                     logger.debug(f"再生数を取得: {video_url} -> {play_count_text}")
                     
                 except NoSuchElementException as e:
@@ -322,13 +328,15 @@ class TikTokCrawler:
             logger.error(f"動画一覧の取得に失敗: {e}")
             return {}
 
-    def save_video_play_stats(self, play_stats: List[Tuple[str, str]]):
+    def save_video_play_stats(self, play_stats: List[Dict[str, str]]):
         """動画の再生数データを保存"""
         try:
             logger.debug(f"再生数データの保存を開始（{len(play_stats)}件）")
             now = datetime.now()
             
-            for url, play_count_text in play_stats:
+            for stat in play_stats:
+                url = stat["url"]
+                play_count_text = stat["count_text"]
                 video_id = url.split("/")[-1]
                 account_username = url.split("/")[2].strip("@")
                 play_stat = VideoPlayStatRawData(
@@ -364,7 +372,7 @@ class TikTokCrawler:
 
 
 
-    def crawl_about_favorite_accounts(self, max_accounts: int = 10, max_videos_per_account: int = 50):
+    def crawl_favorite_accounts(self, max_accounts: int = 10, max_videos_per_account: int = 50):
         try:
             logger.info(f"クロール対象のお気に入りアカウント{max_accounts}件に対し処理を行います")
             favorite_accounts = self.favorite_account_repo.get_favorite_accounts(
@@ -395,7 +403,7 @@ class TikTokCrawler:
                     self.save_video_like_stats(video_like_stats)
 
                     # 動画ページに移動
-                    first_url = next(iter(video_like_stats.keys()))
+                    first_url = video_like_stats[0][0]
                     if not self.navigate_to_video_page(first_url):
                         continue
                     video_desc = self.get_desc_from_video_page()
@@ -430,6 +438,12 @@ class TikTokCrawler:
 
 def main():
     try:
+        # コマンドライン引数の処理
+        import argparse
+        parser = argparse.ArgumentParser(description="TikTok動画データ収集クローラー")
+        parser.add_argument("--account-id", type=int, help="使用するクローラーアカウントのID")
+        args = parser.parse_args()
+
         # データベース接続の初期化
         db = Database()
         
@@ -447,10 +461,10 @@ def main():
         
         try:
             # クローラーを開始（Selenium初期化とログイン）
-            crawler.start()
+            crawler.start(args.account_id)
             
             # お気に入りアカウントのクロール
-            crawler.crawl_about_favorite_accounts()
+            crawler.crawl_favorite_accounts()
             
         finally:
             # クローラーの停止（Seleniumのクリーンアップ）

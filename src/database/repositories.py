@@ -11,7 +11,7 @@ class CrawlerAccountRepository:
         self.db = db
 
     def get_an_available_crawler_account(self) -> Optional[CrawlerAccount]:
-        """利用可能なクローラーアカウントを取得"""
+        """利用可能なクローラーアカウントを1つ取得(使ってない順)"""
         query = """
             SELECT id, username, password, proxy, is_alive, last_crawled_at
             FROM crawler_accounts
