@@ -38,51 +38,59 @@ CREATE_TABLES_SQL = [
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
-    CREATE TABLE IF NOT EXISTS video_desc_raw_data (
-        id INT AUTO_INCREMENT PRIMARY KEY,  -- 自動採番
-        video_id VARCHAR(255) NOT NULL UNIQUE,  -- TikTokの動画IDそのまま
-        url TEXT NOT NULL,
+    CREATE TABLE IF NOT EXISTS video_heavy_raw_data (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        video_url TEXT NOT NULL,
+        video_id VARCHAR(255) NOT NULL,
         account_username VARCHAR(255) NOT NULL,
         account_nickname VARCHAR(255) NOT NULL,
-        title TEXT NOT NULL,
-        posted_at_text VARCHAR(255) NOT NULL,
-        posted_at DATETIME,  -- パース失敗の可能性があるのでNULL許容
+        video_thumbnail_url TEXT NOT NULL,
+        video_title TEXT NOT NULL,
+        posted_at_text VARCHAR(255),
+        posted_at DATETIME,
+        audio_info_text VARCHAR(255),
+        audio_id VARCHAR(255),
+        audio_title TEXT,
+        audio_author_name VARCHAR(255),
+        play_count_text VARCHAR(255),
+        play_count INT,
+        like_count_text VARCHAR(255),
+        like_count INT,
+        comment_count_text VARCHAR(255),
+        comment_count INT,
+        collect_count_text VARCHAR(255),
+        collect_count INT,
+        share_count_text VARCHAR(255),
+        share_count INT,
         crawled_at DATETIME NOT NULL,
+        crawling_algorithm VARCHAR(50) NOT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_video_id (video_id),
         INDEX idx_account_username (account_username),
         INDEX idx_posted_at (posted_at),
-        INDEX idx_crawled_at (crawled_at)
+        INDEX idx_crawled_at (crawled_at),
+        INDEX idx_algorithm (crawling_algorithm)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
-    CREATE TABLE IF NOT EXISTS video_play_stat_raw_data (
+    CREATE TABLE IF NOT EXISTS video_light_raw_data (
         id INT AUTO_INCREMENT PRIMARY KEY,
+        video_url TEXT NOT NULL,
         video_id VARCHAR(255) NOT NULL,
-        url TEXT NOT NULL,
         account_username VARCHAR(255) NOT NULL,
-        count_text VARCHAR(255) NOT NULL,  -- 表示形式のままの再生数
-        count INT,  -- パース後の数値
+        video_thumbnail_url TEXT NOT NULL,
+        video_alt_info_text TEXT NOT NULL,
+        play_count_text VARCHAR(255),
+        play_count INT,
+        like_count_text VARCHAR(255),
+        like_count INT,
         crawled_at DATETIME NOT NULL,
+        crawling_algorithm VARCHAR(50) NOT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_video_id (video_id),
         INDEX idx_account_username (account_username),
-        INDEX idx_crawled_at (crawled_at)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS video_like_stat_raw_data (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        video_id VARCHAR(255) NOT NULL,
-        url TEXT NOT NULL,
-        account_username VARCHAR(255) NOT NULL,
-        count_text VARCHAR(255) NOT NULL,  -- 表示形式のままのいいね数
-        count INT,  -- パース後の数値
-        crawled_at DATETIME NOT NULL,
-        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_video_id (video_id),
-        INDEX idx_account_username (account_username),
-        INDEX idx_crawled_at (crawled_at)
+        INDEX idx_crawled_at (crawled_at),
+        INDEX idx_algorithm (crawling_algorithm)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """
 ]

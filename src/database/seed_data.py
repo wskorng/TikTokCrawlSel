@@ -89,100 +89,119 @@ def insert_favorite_accounts(db: Database, crawler_account_id: int):
 
 def insert_sample_video_data(db: Database):
     """サンプルの動画データを投入"""
-    # 動画の基本情報
-    desc_data = {
+    # 重いデータ（詳細情報）
+    heavy_data = {
         "video_id": "7460937381265411370",
-        "url": "https://www.tiktok.com/@tiktok/video/7460937381265411370",
+        "video_url": "https://www.tiktok.com/@tiktok/video/7460937381265411370",
         "account_username": "tiktok",
         "account_nickname": "TikTok",
-        "title": "Our response to the Supreme Court decision.",
+        "video_thumbnail_url": "https://p16-sign-va.tiktokcdn.com/obj/tos-maliva-p-0068/oQC3BSkCEfDFLKAEbAEQgANNBAKPDYwAfC7bAa",
+        "video_title": "Our response to the Supreme Court decision.",
         "posted_at_text": "2024-01-18",
         "posted_at": datetime(2024, 1, 18),
-        "crawled_at": datetime.now()
+        "audio_info_text": "Original Sound - TikTok",
+        "audio_id": "7460937394724155178",
+        "audio_title": "Original Sound",
+        "audio_author_name": "TikTok",
+        "play_count_text": "15.8M",
+        "play_count": 15800000,
+        "like_count_text": "394.7K",
+        "like_count": 394700,
+        "comment_count_text": "10.2K",
+        "comment_count": 10200,
+        "collect_count_text": "5.1K",
+        "collect_count": 5100,
+        "share_count_text": "2.3K",
+        "share_count": 2300,
+        "crawled_at": datetime.now(),
+        "crawling_algorithm": "selenium-human-like-1"
     }
     
     query = """
-        INSERT INTO video_desc_raw_data (
-            video_id, url, account_username, account_nickname,
-            title, posted_at_text, posted_at, crawled_at
+        INSERT INTO video_heavy_raw_data (
+            video_id, video_url, account_username, account_nickname,
+            video_thumbnail_url, video_title, posted_at_text, posted_at,
+            audio_info_text, audio_id, audio_title, audio_author_name,
+            play_count_text, play_count, like_count_text, like_count,
+            comment_count_text, comment_count, collect_count_text, collect_count,
+            share_count_text, share_count, crawled_at, crawling_algorithm
         ) VALUES (
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
             %s, %s, %s, %s, %s, %s, %s, %s
         )
     """
     db.execute_query(
         query,
         (
-            desc_data["video_id"],
-            desc_data["url"],
-            desc_data["account_username"],
-            desc_data["account_nickname"],
-            desc_data["title"],
-            desc_data["posted_at_text"],
-            desc_data["posted_at"],
-            desc_data["crawled_at"]
+            heavy_data["video_id"],
+            heavy_data["video_url"],
+            heavy_data["account_username"],
+            heavy_data["account_nickname"],
+            heavy_data["video_thumbnail_url"],
+            heavy_data["video_title"],
+            heavy_data["posted_at_text"],
+            heavy_data["posted_at"],
+            heavy_data["audio_info_text"],
+            heavy_data["audio_id"],
+            heavy_data["audio_title"],
+            heavy_data["audio_author_name"],
+            heavy_data["play_count_text"],
+            heavy_data["play_count"],
+            heavy_data["like_count_text"],
+            heavy_data["like_count"],
+            heavy_data["comment_count_text"],
+            heavy_data["comment_count"],
+            heavy_data["collect_count_text"],
+            heavy_data["collect_count"],
+            heavy_data["share_count_text"],
+            heavy_data["share_count"],
+            heavy_data["crawled_at"],
+            heavy_data["crawling_algorithm"]
         )
     )
-    logger.info(f"サンプル動画データ {desc_data['video_id']} を追加しました")
+    logger.info(f"サンプル重いデータ {heavy_data['video_id']} を追加しました")
     
-    # 動画の再生数の統計情報
-    play_stat_data = {
-        "video_id": desc_data["video_id"],
-        "url": desc_data["url"],
-        "account_username": desc_data["account_username"],
-        "count_text": "15.8M",
-        "count": 15800000,
-        "crawled_at": datetime.now()
+    # 軽いデータ（基本情報）
+    light_data = {
+        "video_id": heavy_data["video_id"],
+        "video_url": heavy_data["video_url"],
+        "account_username": heavy_data["account_username"],
+        "video_thumbnail_url": heavy_data["video_thumbnail_url"],
+        "video_alt_info_text": f"{heavy_data['audio_author_name']}の{heavy_data['audio_title']}を使用して{heavy_data['account_nickname']}が作成した{heavy_data['video_title']}",
+        "play_count_text": heavy_data["play_count_text"],
+        "play_count": heavy_data["play_count"],
+        "like_count_text": heavy_data["like_count_text"],
+        "like_count": heavy_data["like_count"],
+        "crawled_at": datetime.now(),
+        "crawling_algorithm": "selenium-human-like-1"
     }
     
     query = """
-        INSERT INTO video_play_stat_raw_data (
-            video_id, url, account_username, count_text, count, crawled_at
+        INSERT INTO video_light_raw_data (
+            video_id, video_url, account_username, video_thumbnail_url,
+            video_alt_info_text, play_count_text, play_count,
+            like_count_text, like_count, crawled_at, crawling_algorithm
         ) VALUES (
-            %s, %s, %s, %s, %s, %s
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
         )
     """
     db.execute_query(
         query,
         (
-            play_stat_data["video_id"],
-            play_stat_data["url"],
-            play_stat_data["account_username"],
-            play_stat_data["count_text"],
-            play_stat_data["count"],
-            play_stat_data["crawled_at"]
+            light_data["video_id"],
+            light_data["video_url"],
+            light_data["account_username"],
+            light_data["video_thumbnail_url"],
+            light_data["video_alt_info_text"],
+            light_data["play_count_text"],
+            light_data["play_count"],
+            light_data["like_count_text"],
+            light_data["like_count"],
+            light_data["crawled_at"],
+            light_data["crawling_algorithm"]
         )
     )
-    logger.info(f"サンプル再生数統計データを追加しました")
-
-    # 動画のいいね数の統計情報
-    like_stat_data = {
-        "video_id": desc_data["video_id"],
-        "url": desc_data["url"],
-        "account_username": desc_data["account_username"],
-        "count_text": "394.7K",
-        "count": 394700,
-        "crawled_at": datetime.now()
-    }
-    
-    query = """
-        INSERT INTO video_like_stat_raw_data (
-            video_id, url, account_username, count_text, count, crawled_at
-        ) VALUES (
-            %s, %s, %s, %s, %s, %s
-        )
-    """
-    db.execute_query(
-        query,
-        (
-            like_stat_data["video_id"],
-            like_stat_data["url"],
-            like_stat_data["account_username"],
-            like_stat_data["count_text"],
-            like_stat_data["count"],
-            like_stat_data["crawled_at"]
-        )
-    )
-    logger.info(f"サンプルいいね数統計データを追加しました")
+    logger.info(f"サンプル軽いデータを追加しました")
 
 
 
