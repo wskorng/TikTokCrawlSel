@@ -120,6 +120,7 @@ reCAPTCHA的なの出たら検知して対応するのも要るわな それか�
 - video_title: str (動画のタイトル)
 - post_time_text: str | null (投稿日時)
 - post_time: datetime | null (Index)
+- audio_url: str | null (音声URL)
 - audio_info_text: str | null (音声情報 = {音声タイトル} - {音声アーティスト名})
 - audio_id: str | null (音声ID)
 - audio_title: str | null (音声タイトル)

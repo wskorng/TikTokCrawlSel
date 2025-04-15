@@ -99,6 +99,7 @@ def insert_sample_video_data(db: Database):
         "video_title": "Our response to the Supreme Court decision.",
         "post_time_text": "2024-01-18",
         "post_time": datetime(2024, 1, 18),
+        "audio_url": "https://www.tiktok.com/@tiktok/music/7460937394724155178",
         "audio_info_text": "Original Sound - TikTok",
         "audio_id": "7460937394724155178",
         "audio_title": "Original Sound",
@@ -121,13 +122,13 @@ def insert_sample_video_data(db: Database):
         INSERT INTO video_heavy_raw_data (
             video_id, video_url, account_username, account_nickname,
             video_thumbnail_url, video_title, post_time_text, post_time,
-            audio_info_text, audio_id, audio_title, audio_author_name,
+            audio_url, audio_info_text, audio_id, audio_title, audio_author_name,
             play_count_text, play_count, like_count_text, like_count,
             comment_count_text, comment_count, collect_count_text, collect_count,
             share_count_text, share_count, crawled_at, crawling_algorithm
         ) VALUES (
             %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-            %s, %s, %s, %s, %s, %s, %s, %s
+            %s, %s, %s, %s, %s, %s, %s, %s, %s
         )
     """
     db.execute_query(
@@ -141,6 +142,7 @@ def insert_sample_video_data(db: Database):
             heavy_data["video_title"],
             heavy_data["post_time_text"],
             heavy_data["post_time"],
+            heavy_data["audio_url"],
             heavy_data["audio_info_text"],
             heavy_data["audio_id"],
             heavy_data["audio_title"],

@@ -146,41 +146,36 @@ class TikTokCrawler:
     def get_video_light_like_datas_from_user_page(self, max_videos: int = 50) -> List[Dict[str, str]]:
         video_stats = []
         try:
-            logger.debug(f"動画のいいね数情報の取得を開始（最大{max_videos}件）")
+            logger.debug(f"動画のいいね数等の情報の取得を開始（最大{max_videos}件）")
             # 動画要素を取得
             video_elements = self.wait.until(
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[data-e2e='user-post-item']"))
             )
-            logger.debug(f"動画要素を{len(video_elements)}件取得")
-            
+
+            logger.debug(f"{len(video_elements)}件走査します")
             for video_element in video_elements[:max_videos]:
                 try:
-                    # 動画の基本情報を取得
+                    # 動画のURLを取得
                     video_link = video_element.find_element(By.TAG_NAME, "a")
                     video_url = video_link.get_attribute("href")
-                    video_id = video_url.split("/")[-1]
                     
-                    # サムネイル画像を取得
+                    # サムネイル画像と動画の代替テキストを取得
                     thumbnail_element = video_element.find_element(By.CSS_SELECTOR, "img")
                     thumbnail_url = thumbnail_element.get_attribute("src")
+                    video_alt_info_text = thumbnail_element.get_attribute("alt")
                     
                     # いいね数を取得（表示形式のまま）
                     like_count_element = video_element.find_element(By.CSS_SELECTOR, "[data-e2e='video-views']") # video-viewsといいながらいいね数
                     like_count_text = like_count_element.text
                     
-                    # 動画タイトルを取得
-                    title_element = video_element.find_element(By.CSS_SELECTOR, "div[class*='DivVideoTitle']")
-                    video_title = title_element.get_attribute("innerText")
-                    
                     video_stats.append({
-                        "video_id": video_id,
                         "video_url": video_url,
                         "video_thumbnail_url": thumbnail_url,
-                        "video_title": video_title,
+                        "video_alt_info_text": video_alt_info_text,
                         "like_count_text": like_count_text,
                         "crawling_algorithm": "selenium-human-like-1"
                     })
-                    logger.debug(f"動画のいいね数情報を取得: {video_id} -> {like_count_text}")
+                    logger.debug(f"動画のいいね数情報を取得: {video_url} -> {like_count_text}")
                     
                 except NoSuchElementException as e:
                     logger.warning(f"動画情報の取得に失敗: {e}")
@@ -218,59 +213,30 @@ class TikTokCrawler:
     def get_video_heavy_data_from_video_page(self) -> Optional[Dict]:
         logger.debug(f"動画の詳細情報の取得を開始")
         try:
-            # アカウント情報を取得
-            account_username = self.driver.find_element(
-                By.CSS_SELECTOR, "[data-e2e='user-title']"
-            ).text
-            logger.debug(f"アカウント名を取得: {account_username}")
-
-            account_nickname = self.driver.find_element(
-                By.CSS_SELECTOR, "[data-e2e='user-subtitle']"
-            ).text
-            logger.debug(f"アカウントニックネームを取得: {account_nickname}")
-
-            title = self.driver.find_element(
-                By.CSS_SELECTOR, "[data-e2e='browse-video-desc']"
-            ).text
-            logger.debug(f"動画タイトルを取得: {title}")
-            
-            # 投稿日時を取得
-            post_time_text = self.driver.find_element(
-                By.CSS_SELECTOR, "[data-e2e='browser-nickname'] span:last-child"
-            ).text
-            logger.debug(f"投稿日時を取得: {post_time_text}")
-            
-            # 音声情報を取得
-            audio_title = self.driver.find_element(
-                By.CSS_SELECTOR, "[data-e2e='browse-music-title']"
-            ).text
-            logger.debug(f"音声タイトルを取得: {audio_title}")
-            
-            # 再生数を取得
-            play_count = self.driver.find_element(
-                By.CSS_SELECTOR, "strong[data-e2e='video-views']"
-            ).text
-            logger.debug(f"再生数を取得: {play_count}")
-            
-            # いいね数を取得
-            like_count = self.driver.find_element(
-                By.CSS_SELECTOR, "strong[data-e2e='like-count']"
-            ).text
-            logger.debug(f"いいね数を取得: {like_count}")
-            
-            current_url = self.driver.current_url
-            video_id = current_url.split("/")[-1]
+            video_url = self.driver.current_url
+            account_username = self.driver.find_element(By.CSS_SELECTOR, "[data-e2e='user-title']").text
+            account_nickname = self.driver.find_element(By.CSS_SELECTOR, "[data-e2e='user-subtitle']").text
+            video_title = self.driver.find_element(By.CSS_SELECTOR, "[data-e2e='browse-video-desc']").text
+            post_time_text = self.driver.find_element(By.CSS_SELECTOR, "[data-e2e='browser-nickname'] span:last-child").text
+            audio_url = self.driver.find_element(By.CSS_SELECTOR, "[data-e2e='browse-music'] a").get_attribute("href")
+            audio_info_text = self.driver.find_element(By.CSS_SELECTOR, "[data-e2e='browse-music'] .css-pvx3oa-DivMusicText").text
+            like_count_text = self.driver.find_element(By.CSS_SELECTOR, "strong[data-e2e='browse-like-count']").text
+            comment_count_text = self.driver.find_element(By.CSS_SELECTOR, "strong[data-e2e='browse-comment-count']").text
+            collection_count_text = self.driver.find_element(By.CSS_SELECTOR, "strong[data-e2e='browse-collect-count']").text
+            share_count_text = self.driver.find_element(By.CSS_SELECTOR, "strong[data-e2e='undefined-count']").text
             
             return {
-                "video_id": video_id,
-                "video_url": current_url,
-                "video_title": title,
-                "creator_nickname": account_nickname,
-                "creator_unique_id": account_username,
+                "video_url": video_url,
+                "account_username": account_username,
+                "account_nickname": account_nickname,
+                "video_title": video_title,
                 "post_time_text": post_time_text,
-                "audio_title": audio_title,
-                "play_count_text": play_count,
-                "like_count_text": like_count,
+                "audio_url": audio_url,
+                "audio_info_text": audio_info_text,
+                "like_count_text": like_count_text,
+                "comment_count_text": comment_count_text,
+                "collection_count_text": collection_count_text,
+                "share_count_text": share_count_text,
                 "crawling_algorithm": "selenium-human-like-1"
             }
 
@@ -296,41 +262,27 @@ class TikTokCrawler:
     def get_video_light_play_datas_from_video_page_creator_videos_tab(self, max_videos: int = 30) -> List[Dict[str, str]]:
         video_stats = []
         try:
-            logger.debug(f"動画の再生数情報の取得を開始（最大{max_videos}件）")
-            # 動画要素を取得
+            logger.debug(f"動画の再生数情報の取得のために動画要素を取得")
             video_elements = self.wait.until(
-                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[data-e2e='user-post-item']"))
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[class='css-eqiq8z-DivItemContainer eadndt66']"))
             )
-            logger.debug(f"動画要素を{len(video_elements)}件取得")
-            
+
+            logger.debug(f"{len(video_elements)}件走査します")
             for video_element in video_elements[:max_videos]:
                 try:
-                    # 動画の基本情報を取得
-                    video_link = video_element.find_element(By.TAG_NAME, "a")
-                    video_url = video_link.get_attribute("href")
-                    video_id = video_url.split("/")[-1]
-                    
                     # サムネイル画像を取得
-                    thumbnail_element = video_element.find_element(By.CSS_SELECTOR, "img")
+                    thumbnail_element = video_element.find_element(By.CSS_SELECTOR, "img[class*='ImgCover']")
                     thumbnail_url = thumbnail_element.get_attribute("src")
                     
                     # 再生数を取得（表示形式のまま）
-                    play_count_element = video_element.find_element(By.CSS_SELECTOR, "strong[data-e2e='video-views'][class*='StrongVideoCount']")
-                    play_count_text = play_count_element.get_attribute("innerText")
-                    
-                    # 動画タイトルを取得
-                    title_element = video_element.find_element(By.CSS_SELECTOR, "div[class*='DivVideoTitle']")
-                    video_title = title_element.get_attribute("innerText")
+                    play_count_element = video_element.find_element(By.CSS_SELECTOR, "div[class*='DivPlayCount']")
+                    play_count_text = play_count_element.text
                     
                     video_stats.append({
-                        "video_id": video_id,
-                        "video_url": video_url,
                         "video_thumbnail_url": thumbnail_url,
-                        "video_title": video_title,
-                        "play_count_text": play_count_text,
-                        "crawling_algorithm": "selenium-human-like-1"
+                        "play_count_text": play_count_text
                     })
-                    logger.debug(f"動画の再生数情報を取得: {video_id} -> {play_count_text}")
+                    logger.debug(f"動画の再生数情報を取得: {thumbnail_url} -> {play_count_text}")
                     
                 except NoSuchElementException as e:
                     logger.warning(f"動画情報の取得に失敗: {e}")
@@ -342,24 +294,60 @@ class TikTokCrawler:
             logger.error(f"動画一覧の取得に失敗: {e}")
             return []
 
-    def save_video_heavy_data(self, heavy_data: Dict) -> bool:
-        """動画の詳細情報を保存"""
+    def save_video_heavy_data(self, heavy_data: Dict, thumbnail_url: str) -> bool:
         try:
-            # post_time_textのパース処理は今後実装
+            # URLからvideo_idを抽出
+            video_id = heavy_data["video_url"].split("/")[-1]
+            if "?" in video_id:
+                video_id = video_id.split("?")[0]
+
+            # audio_info_textから音声情報を抽出
+            audio_title = None
+            audio_author_name = None
+            if heavy_data.get("audio_info_text"):
+                parts = heavy_data["audio_info_text"].split(" - ")
+                if len(parts) == 2:
+                    audio_title = parts[0]
+                    audio_author_name = parts[1]
+
+            # テキスト形式の数値から整数を抽出
+            def extract_number(text: str) -> int:
+                if not text:
+                    return None
+                try:
+                    # 数字以外の文字を削除
+                    num = ''.join(filter(str.isdigit, text))
+                    return int(num) if num else None
+                except:
+                    return None
+
             data = {
-                "id": None,
-                "video_id": heavy_data["video_id"],
+                "id": None,  # 自動採番
                 "video_url": heavy_data["video_url"],
+                "video_id": video_id,
+                "account_username": heavy_data["account_username"],
+                "account_nickname": heavy_data["account_nickname"],
+                "video_thumbnail_url": thumbnail_url,
                 "video_title": heavy_data["video_title"],
-                "creator_nickname": heavy_data["creator_nickname"],
-                "creator_unique_id": heavy_data["creator_unique_id"],
-                "post_time_text": heavy_data["post_time_text"],
+                "post_time_text": heavy_data.get("post_time_text"),
                 "post_time": None,  # TODO: post_time_textのパース処理を実装
-                "audio_title": heavy_data["audio_title"],
-                "play_count_text": heavy_data["play_count_text"],
-                "like_count_text": heavy_data["like_count_text"],
-                "crawling_algorithm": heavy_data["crawling_algorithm"],
-                "crawled_at": datetime.now()
+                "audio_url": heavy_data.get("audio_url"),
+                "audio_info_text": heavy_data.get("audio_info_text"),
+                "audio_id": None,  # 現在は取得できない
+                "audio_title": audio_title,
+                "audio_author_name": audio_author_name,
+                "play_count_text": None,  # 現在は取得できない
+                "play_count": None,  # 現在は取得できない
+                "like_count_text": heavy_data.get("like_count_text"),
+                "like_count": extract_number(heavy_data.get("like_count_text")),
+                "comment_count_text": heavy_data.get("comment_count_text"),
+                "comment_count": extract_number(heavy_data.get("comment_count_text")),
+                "collect_count_text": heavy_data.get("collection_count_text"),
+                "collect_count": extract_number(heavy_data.get("collection_count_text")),
+                "share_count_text": heavy_data.get("share_count_text"),
+                "share_count": extract_number(heavy_data.get("share_count_text")),
+                "crawled_at": datetime.now(),
+                "crawling_algorithm": heavy_data["crawling_algorithm"]
             }
             
             self.video_repo.save_video_heavy_data(data)

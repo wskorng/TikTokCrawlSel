@@ -31,6 +31,7 @@ class VideoHeavyRawData:
     creator_unique_id: str = ""
     post_time_text: str = ""
     post_time: Optional[datetime] = None  # パースできないかもしれない
+    audio_url: Optional[str] = None
     audio_info_text: Optional[str] = None
     audio_id: Optional[str] = None
     audio_title: Optional[str] = None
