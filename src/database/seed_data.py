@@ -44,24 +44,16 @@ def insert_favorite_accounts(db: Database, crawler_account_id: int):
     """お気に入りアカウントのテストデータを投入"""
     accounts = [
         {
-            "username": "tiktok",  # TikTok公式
+            "username": "cutie_street",  # CUTIE STREET
             "priority": 100
         },
         {
-            "username": "gordonramsayofficial",  # ゴードン・ラムゼイ
+            "username": "kana.sii.i",  # のミントグリーン
             "priority": 90
         },
         {
-            "username": "zachking",  # Zach King
+            "username": "m_ayano26",  # の青
             "priority": 80
-        },
-        {
-            "username": "charlidamelio",  # Charli D'Amelio
-            "priority": 70
-        },
-        {
-            "username": "willsmith",  # Will Smith
-            "priority": 60
         }
     ]
     
@@ -91,29 +83,29 @@ def insert_sample_video_data(db: Database):
     """サンプルの動画データを投入"""
     # 重いデータ（詳細情報）
     heavy_data = {
-        "video_id": "7460937381265411370",
-        "video_url": "https://www.tiktok.com/@tiktok/video/7460937381265411370",
-        "account_username": "tiktok",
-        "account_nickname": "TikTok",
+        "video_id": "7483836569720245511",
+        "video_url": "https://www.tiktok.com/@cutie_street/video/7483836569720245511",
+        "account_username": "cutie_street",
+        "account_nickname": "CUTIE STREET",
         "video_thumbnail_url": "https://p16-sign-va.tiktokcdn.com/obj/tos-maliva-p-0068/oQC3BSkCEfDFLKAEbAEQgANNBAKPDYwAfC7bAa",
         "video_title": "Our response to the Supreme Court decision.",
         "post_time_text": "2024-01-18",
         "post_time": datetime(2024, 1, 18),
-        "audio_url": "https://www.tiktok.com/@tiktok/music/7460937394724155178",
-        "audio_info_text": "Original Sound - TikTok",
-        "audio_id": "7460937394724155178",
-        "audio_title": "Original Sound",
-        "audio_author_name": "TikTok",
-        "play_count_text": "15.8M",
-        "play_count": 15800000,
-        "like_count_text": "394.7K",
-        "like_count": 394700,
-        "comment_count_text": "10.2K",
-        "comment_count": 10200,
-        "collect_count_text": "5.1K",
-        "collect_count": 5100,
-        "share_count_text": "2.3K",
-        "share_count": 2300,
+        "audio_url": "https://www.tiktok.com/music/%E3%81%8B%E3%82%8F%E3%81%84%E3%81%84%E3%81%A0%E3%81%91%E3%81%98%E3%82%83%E3%81%A0%E3%82%81%E3%81%A7%E3%81%99%E3%81%8B-1%E3%82%B5%E3%83%93-7408694581557004305",
+        "audio_info_text": "Original Sound - CUTIE STREET",
+        "audio_id": "7408694581557004305",
+        "audio_title": "かわいいだけじゃだめですか？ - 1サビ",
+        "audio_author_name": "CUTIE STREET",
+        "play_count_text": "5M",
+        "play_count": 5000000,
+        "like_count_text": "307.3K",
+        "like_count": 307300,
+        "comment_count_text": "1907",
+        "comment_count": 1907,
+        "collect_count_text": "1.1K",
+        "collect_count": 1100,
+        "share_count_text": None,
+        "share_count": None,
         "crawled_at": datetime.now(),
         "crawling_algorithm": "selenium-human-like-1"
     }

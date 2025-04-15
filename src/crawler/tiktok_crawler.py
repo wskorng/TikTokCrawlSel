@@ -221,7 +221,7 @@ class TikTokCrawler:
                 self.driver.execute_script(
                     "window.scrollTo(0, document.body.scrollHeight);"
                 )
-                self._random_sleep(1.0, 2.0)
+                self._random_sleep(2.0, 3.0)
                 
         except Exception:
             logger.exception(f"ページのスクロールに失敗")
@@ -246,7 +246,7 @@ class TikTokCrawler:
                 )
                 
                 # スクロール後に少し待機
-                self._random_sleep(1.0, 2.0)
+                self._random_sleep(2.0, 3.0)
                 
                 # 新しい高さを取得
                 new_height = self.driver.execute_script(
@@ -263,7 +263,7 @@ class TikTokCrawler:
 
     def _login(self): # TikTokにログインする
         try:
-            logger.info("TikTokにログインを試みます")
+            logger.info("TikTokにログイン中...")
             self.driver.get(f"{self.BASE_URL}/login/phone-or-email/email")
             self._random_sleep(2.0, 4.0)
 
@@ -301,7 +301,7 @@ class TikTokCrawler:
             raise
 
     def navigate_to_user_page(self, username: str) -> bool:
-        logger.debug(f"アカウント {username} のページに移動")
+        logger.debug(f"ユーザー @{username} のページに移動中...")
         try:
             self.driver.get(f"{self.BASE_URL}/@{username}")
             self._random_sleep(2.0, 4.0)
@@ -310,19 +310,19 @@ class TikTokCrawler:
             self.wait.until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "[data-e2e='user-post-item']"))
             )
+            logger.debug(f"ユーザー @{username} のページに移動しました")
             return True
             
         except Exception:
-            logger.exception(f"ユーザー {username} のページへの移動に失敗")
+            logger.exception(f"ユーザー @{username} のページへの移動に失敗")
             return False
 
     def get_video_light_like_datas_from_user_page(self, max_videos: int = 100) -> List[Dict[str, str]]:
-        # max_videosはあくまで目安。動画要素を取得範囲のスクロール幅をコントロールするだけで、実際に取得する動画数は制限されない
         try:
-            logger.debug(f"動画のいいね数等の情報の取得を開始")
+            logger.debug(f"動画の軽いデータの前半を取得中...")
             video_stats = []
             # 動画要素を取得
-            self.scroll_page(max_videos // 8)
+            self.scroll_page(max_videos // 16)
             video_elements = self.wait.until(
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[data-e2e='user-post-item']"))
             )
@@ -340,7 +340,7 @@ class TikTokCrawler:
                     
                     # サムネイル画像と動画の代替テキストを取得
                     thumbnail_element = video_element.find_element(By.CSS_SELECTOR, "img")
-                    thumbnail_url = thumbnail_element.get_attribute("src")
+                    thumbnail_url = thumbnail_element.get_attribute("src") # 50件中16件くらい src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" になって後半とのマージができなくなる問題があったけど、画面最大化してスクロールの時間ちょっと伸ばしたら治った
                     video_alt_info_text = thumbnail_element.get_attribute("alt")
                     
                     # いいね数を取得（表示形式のまま）
@@ -354,20 +354,20 @@ class TikTokCrawler:
                         "like_count_text": like_count_text,
                         "crawling_algorithm": "selenium-human-like-1"
                     })
-                    # logger.debug(f"動画のいいね数情報を取得: {video_url} -> {like_count_text}")
                     
                 except NoSuchElementException:
-                    logger.warning(f"動画情報の取得に失敗", exc_info=True)
+                    logger.warning(f"動画の軽いデータの前半の取得のうち1件に失敗", exc_info=True)
                     continue
-                    
+            
+            logger.debug(f"動画の軽いデータの前半を取得しました: {len(video_stats)}件")
             return video_stats
             
         except Exception:
-            logger.exception(f"動画一覧の取得に失敗")
+            logger.exception(f"動画の軽いデータの前半の取得に失敗")
             return []
 
     def navigate_to_video_page(self, video_url: str) -> bool:
-        logger.debug(f"動画ページに移動: {video_url}")
+        logger.debug(f"動画ページに移動中...: {video_url}")
         try:
             # 現在のページにリンクがあればクリック、なければ直接移動
             # クリックで移動しないと、「クリエイターの動画」ではなく「関連動画」タブになる。まあそれでもクローラーは動くけど目的の動画を集めれるかと言うとね
@@ -383,14 +383,15 @@ class TikTokCrawler:
             self.wait.until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "[data-e2e='user-title']"))
             )
+            logger.debug(f"動画ページに移動しました: {video_url}")
             return True
             
         except Exception:
-            logger.exception(f"動画ページへの移動に失敗")
+            logger.exception(f"動画ページへの移動に失敗: {video_url}")
             return False
 
     def get_video_heavy_data_from_video_page(self) -> Optional[Dict]:
-        logger.debug(f"動画の重いデータの取得を開始")
+        logger.debug(f"動画の重いデータを取得中...")
         try:
             video_url = self.driver.current_url
             account_username = self.driver.find_element(By.CSS_SELECTOR, "[data-e2e='user-title']").text
@@ -403,6 +404,8 @@ class TikTokCrawler:
             comment_count_text = self.driver.find_element(By.CSS_SELECTOR, "strong[data-e2e='browse-comment-count']").text
             collection_count_text = self.driver.find_element(By.CSS_SELECTOR, "strong[data-e2e='undefined-count']").text
             
+            logger.debug(f"動画の重いデータを取得しました: {video_url}")
+
             return {
                 "video_url": video_url,
                 "account_username": account_username,
@@ -418,11 +421,11 @@ class TikTokCrawler:
             }
 
         except Exception:
-            logger.exception(f"動画の重いデータの取得に失敗")
+            logger.exception(f"動画の重いデータの取得に失敗: {video_url}")
             return None
     
     def navigate_to_video_page_creator_videos_tab(self) -> bool:
-        logger.debug("動画ページの「クリエイターの動画」タブに移動")
+        logger.debug("動画ページの「クリエイターの動画」タブに移動中...")
         try:
             # 2番目のタブ（クリエイターの動画）を待機して取得
             creator_videos_tab = self.wait.until(
@@ -438,17 +441,17 @@ class TikTokCrawler:
 
     def get_video_light_play_datas_from_video_page_creator_videos_tab(self, max_videos: int = 100) -> List[Dict[str, str]]:
         # max_videosはあくまで目安。動画要素を取得範囲のスクロール幅をコントロールするだけで、実際に取得する動画数は制限されない
+        logger.debug(f"動画の軽いデータの後半を取得中...")
         try:
-            logger.debug(f"動画の再生数情報の取得のために動画要素を取得")
             video_stats = []
             # クリエイターの動画一覧をスクロール
-            self.scroll_element("div[class*='css-1xyzrsf-DivVideoListContainer e1o3lsy81']", max_videos // 6)
+            self.scroll_element("div[class*='css-1xyzrsf-DivVideoListContainer e1o3lsy81']", max_videos // 12)
             video_elements = self.wait.until(
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[class='css-eqiq8z-DivItemContainer eadndt66']"))
             )
 
             logger.debug(f"{len(video_elements)}件走査します")
-            for video_element in video_elements[:max_videos]:
+            for video_element in video_elements:
                 try:
                     # サムネイル画像を取得
                     thumbnail_element = video_element.find_element(By.CSS_SELECTOR, "img[class*='ImgCover']")
@@ -465,16 +468,18 @@ class TikTokCrawler:
                     # logger.debug(f"動画の再生数情報を取得: {thumbnail_url} -> {play_count_text}")
                     
                 except NoSuchElementException:
-                    logger.warning(f"動画情報の取得に失敗", exc_info=True)
+                    logger.warning(f"動画の軽いデータの後半の取得のうち1件に失敗", exc_info=True)
                     continue
                     
+            logger.debug(f"動画の軽いデータの後半を取得しました: {len(video_stats)}件")
             return video_stats
             
         except Exception:
-            logger.exception(f"動画一覧の取得に失敗")
+            logger.exception(f"動画の軽いデータの後半の取得に失敗: {len(video_elements)}件走査しました")
             return []
 
     def parse_and_save_video_heavy_data(self, heavy_data: Dict, thumbnail_url: str) -> bool:
+        logger.debug(f"動画の重いデータをパースおよび保存中...: {heavy_data['video_url']}")
         try:
             video_id, _ = parse_tiktok_video_url(heavy_data["video_url"])
 
@@ -520,11 +525,11 @@ class TikTokCrawler:
             )
             
             self.video_repo.save_video_heavy_data(data)
-            logger.info(f"動画の重いデータを保存: {data.video_id}")
+            logger.info(f"動画の重いデータをパースおよび保存しました: {data.video_url}")
             return True
             
-        except Exception as e:
-            logger.exception(f"動画の重いデータの保存に失敗")
+        except Exception:
+            logger.exception(f"動画の重いデータのパースおよび保存に失敗: {data.video_url}")
             return False
 
     def _extract_thumbnail_essence(self, thumbnail_url: str) -> str:
@@ -548,17 +553,21 @@ class TikTokCrawler:
             return thumbnail_url  # 失敗した場合は元のURLを返す
 
     def parse_and_save_video_light_datas(self, light_like_datas: List[Dict], light_play_datas: List[Dict]) -> bool:
+        logger.debug(f"動画の軽いデータをパースおよび保存中...")
         try:
-            # サムネイルURLの識別子をキーに、再生数をマッピング
+            # サムネイルURLのエッセンスをキーに、再生数をマッピング
             play_count_map = {}
             for play_data in light_play_datas:
                 thumbnail_essence = self._extract_thumbnail_essence(play_data["video_thumbnail_url"])
                 play_count_map[thumbnail_essence] = play_data["play_count_text"]
             
             # いいね数データを処理し、再生数を追加
+            play_count_not_found = 0
             for like_data in light_like_datas:
                 thumbnail_essence = self._extract_thumbnail_essence(like_data["video_thumbnail_url"])
                 play_count_text = play_count_map.get(thumbnail_essence)
+                if not play_count_text:
+                    play_count_not_found += 1
                 
                 # URLからvideo_idとaccount_usernameを抽出
                 video_id, account_username = parse_tiktok_video_url(like_data["video_url"])
@@ -581,10 +590,11 @@ class TikTokCrawler:
                 # logger.debug(f"動画の軽いデータを保存します: {data.video_id} -> {data.play_count}, {data.like_count}")
                 self.video_repo.save_video_light_data(data)
             
+            logger.info(f"動画の軽いデータをパースおよび保存しました: {len(light_like_datas)}件、うちplay_count_textが取れなかったもの: {play_count_not_found}件")
             return True
             
-        except Exception as e:
-            logger.exception(f"動画の軽いデータの保存に失敗しました")
+        except Exception:
+            logger.exception(f"動画の軽いデータのパースおよび保存に失敗")
             return False
             
 
@@ -609,7 +619,7 @@ class TikTokCrawler:
             # 各アカウントの動画をクロール
             for account in favorite_accounts:
                 try:
-                    logger.info(f"アカウント {account.favorite_account_username} のクロールを開始")
+                    logger.info(f"アカウント @{account.favorite_account_username} のクロールを開始")
 
                     # アカウントページに移動
                     if not self.navigate_to_user_page(account.favorite_account_username):
@@ -641,13 +651,13 @@ class TikTokCrawler:
                         datetime.now()
                     )
 
-                except Exception as e:
-                    logger.exception(f"アカウント {account.favorite_account_username} のクロール中にエラー: {e}")
+                except Exception:
+                    logger.exception(f"アカウント @{account.favorite_account_username} のクロール中に失敗")
                     continue
             
-            logger.info(f"クロール対象のお気に入りアカウント{max_accounts}件に対し処理を完了しました")
+            logger.info(f"クロール対象のお気に入りアカウント{len(favorite_accounts)}件に対し処理を完了しました")
 
-        except Exception as e:
+        except Exception:
             logger.exception(f"クロール処理に失敗")
             raise
 

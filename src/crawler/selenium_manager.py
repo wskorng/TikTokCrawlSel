@@ -27,7 +27,7 @@ class SeleniumManager:
             options.add_argument('--ignore-gpu-blocklist')
             options.add_argument('--enable-hardware-overlays')
             options.add_argument('--enable-features=VaapiVideoDecoder')
-            options.add_argument('--window-size=1280,720')
+            options.add_argument('--start-maximized')
             
             service = Service()
             self.driver = webdriver.Chrome(service=service, options=options)
