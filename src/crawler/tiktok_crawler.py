@@ -215,6 +215,7 @@ class TikTokCrawler:
         time.sleep(random.uniform(min_seconds, max_seconds))
 
     def scroll_page(self, scroll_count: int = 3):
+        """Window全体をスクロールする"""
         try:
             for _ in range(scroll_count):
                 self.driver.execute_script(
@@ -224,6 +225,41 @@ class TikTokCrawler:
                 
         except Exception:
             logger.exception(f"ページのスクロールに失敗")
+    
+    def scroll_element(self, element_selector: str, scroll_count: int = 3):
+        """特定の要素内をスクロールする"""
+        try:
+            for _ in range(scroll_count):
+                # 要素を取得
+                element = self.driver.find_element(By.CSS_SELECTOR, element_selector)
+                
+                # 要素の現在の高さを取得
+                current_height = self.driver.execute_script(
+                    "return arguments[0].scrollHeight;",
+                    element
+                )
+                
+                # 要素を下にスクロール
+                self.driver.execute_script(
+                    "arguments[0].scrollTop = arguments[0].scrollHeight;",
+                    element
+                )
+                
+                # スクロール後に少し待機
+                self._random_sleep(1.0, 2.0)
+                
+                # 新しい高さを取得
+                new_height = self.driver.execute_script(
+                    "return arguments[0].scrollHeight;",
+                    element
+                )
+                
+                # 高さが変わっていない場合は、もうスクロールできない
+                if new_height == current_height:
+                    break
+                    
+        except Exception:
+            logger.exception(f"要素のスクロールに失敗: {element_selector}")
 
     def _login(self): # TikTokにログインする
         try:
@@ -281,10 +317,12 @@ class TikTokCrawler:
             return False
 
     def get_video_light_like_datas_from_user_page(self, max_videos: int = 100) -> List[Dict[str, str]]:
-        video_stats = []
+        # max_videosはあくまで目安。動画要素を取得範囲のスクロール幅をコントロールするだけで、実際に取得する動画数は制限されない
         try:
-            logger.debug(f"動画のいいね数等の情報の取得を開始（最大{max_videos}件）")
+            logger.debug(f"動画のいいね数等の情報の取得を開始")
+            video_stats = []
             # 動画要素を取得
+            self.scroll_page(max_videos // 8)
             video_elements = self.wait.until(
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[data-e2e='user-post-item']"))
             )
@@ -316,7 +354,7 @@ class TikTokCrawler:
                         "like_count_text": like_count_text,
                         "crawling_algorithm": "selenium-human-like-1"
                     })
-                    logger.debug(f"動画のいいね数情報を取得: {video_url} -> {like_count_text}")
+                    # logger.debug(f"動画のいいね数情報を取得: {video_url} -> {like_count_text}")
                     
                 except NoSuchElementException:
                     logger.warning(f"動画情報の取得に失敗", exc_info=True)
@@ -352,7 +390,7 @@ class TikTokCrawler:
             return False
 
     def get_video_heavy_data_from_video_page(self) -> Optional[Dict]:
-        logger.debug(f"動画の詳細情報の取得を開始")
+        logger.debug(f"動画の重いデータの取得を開始")
         try:
             video_url = self.driver.current_url
             account_username = self.driver.find_element(By.CSS_SELECTOR, "[data-e2e='user-title']").text
@@ -380,7 +418,7 @@ class TikTokCrawler:
             }
 
         except Exception:
-            logger.exception(f"動画の詳細情報の取得に失敗")
+            logger.exception(f"動画の重いデータの取得に失敗")
             return None
     
     def navigate_to_video_page_creator_videos_tab(self) -> bool:
@@ -399,9 +437,12 @@ class TikTokCrawler:
             return False
 
     def get_video_light_play_datas_from_video_page_creator_videos_tab(self, max_videos: int = 100) -> List[Dict[str, str]]:
-        video_stats = []
+        # max_videosはあくまで目安。動画要素を取得範囲のスクロール幅をコントロールするだけで、実際に取得する動画数は制限されない
         try:
             logger.debug(f"動画の再生数情報の取得のために動画要素を取得")
+            video_stats = []
+            # クリエイターの動画一覧をスクロール
+            self.scroll_element("div[class*='css-1xyzrsf-DivVideoListContainer e1o3lsy81']", max_videos // 6)
             video_elements = self.wait.until(
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[class='css-eqiq8z-DivItemContainer eadndt66']"))
             )
@@ -421,7 +462,7 @@ class TikTokCrawler:
                         "video_thumbnail_url": thumbnail_url,
                         "play_count_text": play_count_text
                     })
-                    logger.debug(f"動画の再生数情報を取得: {thumbnail_url} -> {play_count_text}")
+                    # logger.debug(f"動画の再生数情報を取得: {thumbnail_url} -> {play_count_text}")
                     
                 except NoSuchElementException:
                     logger.warning(f"動画情報の取得に失敗", exc_info=True)
@@ -537,7 +578,7 @@ class TikTokCrawler:
                     crawled_at=datetime.now()
                 )
 
-                logger.info(f"動画の軽いデータを保存します: {data.video_id} -> {data.play_count}, {data.like_count}")
+                # logger.debug(f"動画の軽いデータを保存します: {data.video_id} -> {data.play_count}, {data.like_count}")
                 self.video_repo.save_video_light_data(data)
             
             return True
@@ -549,7 +590,7 @@ class TikTokCrawler:
 
 
 
-    def crawl_favorite_accounts_light(self, max_accounts: int = 10, max_videos_per_account: int = 100):
+    def crawl_favorite_accounts_light(self, max_videos_per_account: int = 100, max_accounts: int = 10):
         try:
             logger.info(f"クロール対象のお気に入りアカウント{max_accounts}件に対し軽いデータのクロールを行います")
             favorite_accounts = self.favorite_account_repo.get_favorite_accounts(
@@ -573,7 +614,6 @@ class TikTokCrawler:
                     # アカウントページに移動
                     if not self.navigate_to_user_page(account.favorite_account_username):
                         continue
-                    self.scroll_page(3)
                     light_like_datas = self.get_video_light_like_datas_from_user_page(max_videos_per_account)
                     if not light_like_datas:
                         continue
@@ -590,10 +630,7 @@ class TikTokCrawler:
                     # 動画ページの「クリエイターの動画」タブに移動
                     if not self.navigate_to_video_page_creator_videos_tab():
                         continue
-                    self.scroll_page(3)
-                    light_play_datas = self.get_video_light_play_datas_from_video_page_creator_videos_tab(max_videos_per_account)
-                    if not light_play_datas:
-                        continue
+                    light_play_datas = self.get_video_light_play_datas_from_video_page_creator_videos_tab(max_videos_per_account+12) # ピン留めとかphoto投稿の影響でちゃんと一対一対応してるか怪しいんでね
                     
                     # 動画の基本情報を保存
                     self.parse_and_save_video_light_datas(light_like_datas, light_play_datas)
@@ -643,14 +680,14 @@ def main():
             crawler.start(args.account_id)
             
             # お気に入りアカウントのクロール
-            crawler.crawl_favorite_accounts_light()
+            crawler.crawl_favorite_accounts_light(50)
             
         finally:
             # クローラーの停止（Seleniumのクリーンアップ）
             crawler.stop()
             
-    except Exception as e:
-        logger.exception(f"メイン処理でエラー: {e}")
+    except Exception:
+        logger.exception(f"メイン処理でエラー")
         raise
     
     finally:
