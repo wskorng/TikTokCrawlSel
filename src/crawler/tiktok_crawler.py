@@ -242,7 +242,7 @@ class TikTokCrawler:
             logger.error(f"ユーザー {username} のページへの移動に失敗: {e}")
             return False
 
-    def get_video_light_like_datas_from_user_page(self, max_videos: int = 50) -> List[Dict[str, str]]:
+    def get_video_light_like_datas_from_user_page(self, max_videos: int = 100) -> List[Dict[str, str]]:
         video_stats = []
         try:
             logger.debug(f"動画のいいね数等の情報の取得を開始（最大{max_videos}件）")
@@ -358,7 +358,7 @@ class TikTokCrawler:
             logger.error(f"動画ページの「クリエイターの動画」タブへの移動に失敗: {e}")
             return False
 
-    def get_video_light_play_datas_from_video_page_creator_videos_tab(self, max_videos: int = 30) -> List[Dict[str, str]]:
+    def get_video_light_play_datas_from_video_page_creator_videos_tab(self, max_videos: int = 100) -> List[Dict[str, str]]:
         video_stats = []
         try:
             logger.debug(f"動画の再生数情報の取得のために動画要素を取得")
@@ -495,9 +495,9 @@ class TikTokCrawler:
 
 
 
-    def crawl_favorite_accounts(self, max_accounts: int = 10, max_videos_per_account: int = 50):
+    def crawl_favorite_accounts(self, max_accounts: int = 10, max_videos_per_account: int = 100):
         try:
-            logger.info(f"クロール対象のお気に入りアカウント{max_accounts}件に対し処理を行います")
+            logger.info(f"クロール対象のお気に入りアカウント{max_accounts}件に対し軽いデータのクロールを行います")
             favorite_accounts = self.favorite_account_repo.get_favorite_accounts(
                 self.crawler_account.id,
                 limit=max_accounts
@@ -533,6 +533,7 @@ class TikTokCrawler:
                         continue
                     self.parse_and_save_video_heavy_data(heavy_data)
 
+                    # 動画ページの「クリエイターの動画」タブに移動
                     if not self.navigate_to_video_page_creator_videos_tab():
                         continue
                     self.scroll_page(3)
