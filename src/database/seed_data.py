@@ -44,7 +44,7 @@ def insert_favorite_users(db: Database, crawler_account_id: int):
     """お気に入りアカウントのテストデータを投入"""
     accounts = [
         {
-            "username": "kiritampo",  # きりたんぽ (死んでる)
+            "username": "123987443",  # Marina  (死んでる)
             "priority": 100
         },
         {
@@ -116,13 +116,13 @@ def insert_favorite_users(db: Database, crawler_account_id: int):
             "priority": 100
         },
         {
-            "username": "123987443",  # Marina
+            "username": "83743927",  # 西村歩乃果
             "priority": 100
         },
         {
-            "username": "83743927",  # 西村歩乃果
+            "username": "kiritampo",  # きりたんぽ
             "priority": 100
-        }
+        },
     ]
 
     

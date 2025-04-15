@@ -364,7 +364,7 @@ class TikTokCrawler:
                     "like_count_text": like_count_text,
                     "crawling_algorithm": "selenium-human-like-1"
                 })
-                
+            
             except NoSuchElementException:
                 logger.warning(f"動画の軽いデータの前半の取得のうち1件に失敗", exc_info=True)
                 continue
@@ -609,6 +609,8 @@ class TikTokCrawler:
         for user in favorite_users:
             try:
                 self.crawl_user_light(user, max_videos_per_user)
+            except KeyboardInterrupt:
+                raise
             except Exception:
                 logger.exception(f"ユーザー @{user.favorite_user_username} の軽いデータのクロール中に失敗")
                 continue
@@ -635,6 +637,8 @@ class TikTokCrawler:
                     raise
                 finally:
                     self.navigate_to_user_page_from_video_page()
+            except KeyboardInterrupt:
+                raise
             except Exception:
                 logger.exception(f"動画 {light_like_data['video_url']} の重いデータのクロール中に失敗。継続します")
                 continue
@@ -656,6 +660,8 @@ class TikTokCrawler:
         for user in favorite_users:
             try:
                 self.crawl_user_heavy(user, max_videos_per_user)
+            except KeyboardInterrupt:
+                raise
             except Exception:
                 logger.exception(f"ユーザー @{user.favorite_user_username} の重いデータのクロール中に失敗。継続します")
                 continue
@@ -727,4 +733,12 @@ def main():
             # TODO bothのとき被ってるとこ多いんで別関数で作ろう
 
 if __name__ == "__main__":
-    main()
+    import sys
+    try:
+        main()
+    except KeyboardInterrupt:
+        logger.info("ユーザーによりクロールが中断されました")
+        sys.exit(130)  # 128 + SIGINT(2)
+    except Exception:
+        logger.exception("予期しないエラーが発生しました")
+        sys.exit(1)
