@@ -266,7 +266,7 @@ class TikTokCrawler:
             raise
 
     def _login(self): # TikTokにログインする
-        logger.info("TikTokにログイン中...")
+        logger.info(f"クロール用アカウント{self.crawler_account.username}でTikTokにログイン中...")
         self.driver.get(f"{self.BASE_URL}/login/phone-or-email/email")
         self._random_sleep(2.0, 4.0)
 
@@ -298,7 +298,7 @@ class TikTokCrawler:
         login_wait.until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "[data-e2e='profile-icon']")),
         )
-        logger.info("ログインに成功しました")
+        logger.info(f"クロール用アカウント{self.crawler_account.username}でTikTokへのログインに成功しました")
 
 
     class UserNotFoundException(Exception):
