@@ -7,9 +7,7 @@ logger = setup_logger(__name__)
 def clear_all_data():
     """全テーブルのデータを削除"""
     load_dotenv()
-    db = Database()
-    
-    try:
+    with Database() as db:
         # 外部キー制約を一時的に無効化
         db.execute_query("SET FOREIGN_KEY_CHECKS = 0")
         
@@ -28,12 +26,6 @@ def clear_all_data():
         # 外部キー制約を再度有効化
         db.execute_query("SET FOREIGN_KEY_CHECKS = 1")
         logger.info("全テーブルのデータ削除が完了しました")
-        
-    except Exception as e:
-        logger.error(f"データ削除中にエラーが発生: {e}")
-        raise
-    finally:
-        db.disconnect()
 
 if __name__ == "__main__":
     clear_all_data()

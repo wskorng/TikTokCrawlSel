@@ -46,10 +46,9 @@ def save_to_csv(data: List[Dict[str, Any]], output_path: Path):
 def main():
     """DBの内容をCSVファイルに出力する"""
     load_dotenv()
-    db = Database()
-    output_dir = Path("output/database_dump")
-    
-    try:
+    with Database() as db:
+        output_dir = Path("output/database_dump")
+        
         logger.info("DBデータのエクスポートを開始します")
         
         # クローラーアカウント
@@ -70,11 +69,6 @@ def main():
         
         logger.info("DBデータのエクスポートが完了しました")
         
-    except Exception as e:
-        logger.error(f"DBデータのエクスポート中にエラーが発生: {e}")
-        raise
-    finally:
-        db.disconnect()
 
 if __name__ == "__main__":
     main()

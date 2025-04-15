@@ -98,47 +98,24 @@ CREATE_TABLES_SQL = [
 
 def create_database():
     """データベースを作成する"""
-    try:
-        # DB_CONFIGからdatabase設定を除外してコピー
-        config = DB_CONFIG.copy()
-        database_name = config.pop('database')
-        
-        conn = mysql.connector.connect(**config)
-        cursor = conn.cursor()
-        
+    # DB_CONFIGからdatabase設定を除外してコピー
+    config = DB_CONFIG.copy()
+    database_name = config.pop('database')
+    
+    with Database(config=config) as db:
         # データベースが存在しない場合は作成
-        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {database_name} "
+        db.execute_query(f"CREATE DATABASE IF NOT EXISTS {database_name} "
                       f"DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
         logger.info(f"データベース {database_name} を作成しました")
-        
-    except Error as e:
-        logger.error(f"データベース作成エラー: {e}")
-        raise
-    finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
 
 def create_tables():
     """テーブルを作成する"""
-    try:
-        conn = mysql.connector.connect(**DB_CONFIG)
-        cursor = conn.cursor()
-        
+    with Database() as db:
         for create_table_sql in CREATE_TABLES_SQL:
-            cursor.execute(create_table_sql)
+            db.execute_query(create_table_sql)
             logger.info(f"テーブルを作成しました: {create_table_sql.split('CREATE TABLE IF NOT EXISTS')[1].split('(')[0].strip()}")
-        
-        conn.commit()
         logger.info("全てのテーブルの作成が完了しました")
         
-    except Error as e:
-        logger.error(f"テーブル作成エラー: {e}")
-        raise
-    finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
 
 def init_database():
     """データベースとテーブルを初期化する"""

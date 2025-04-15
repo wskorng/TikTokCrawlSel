@@ -7,13 +7,22 @@ from ..logger import setup_logger
 logger = setup_logger(__name__)
 
 class Database:
-    def __init__(self):
+    def __init__(self, config=None):
         self.connection = None
+        self.config = config or DB_CONFIG
+
+    def __enter__(self):
+        self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.disconnect()
 
     def connect(self):
         try:
-            self.connection = mysql.connector.connect(**DB_CONFIG)
-            logger.info("データベースに接続しました")
+            if not self.connection or not self.connection.is_connected():
+                self.connection = mysql.connector.connect(**self.config)
+                logger.info("データベースに接続しました")
         except Error as e:
             logger.error(f"データベース接続エラー: {e}")
             raise
@@ -24,8 +33,7 @@ class Database:
             logger.info("データベース接続を閉じました")
 
     def get_connection(self):
-        if not self.connection or not self.connection.is_connected():
-            self.connect()
+        self.connect()
         return self.connection
 
     def execute_query(self, query: str, params: Optional[tuple] = None):

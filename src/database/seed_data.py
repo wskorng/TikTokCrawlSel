@@ -272,9 +272,7 @@ def insert_sample_video_data(db: Database):
 def main():
     """テストデータの投入を実行"""
     load_dotenv()
-    db = Database()
-    
-    try:
+    with Database() as db:
         logger.info("テストデータの投入を開始します")
         
         # クローラーアカウントの投入
@@ -290,11 +288,6 @@ def main():
         
         logger.info("テストデータの投入が完了しました")
         
-    except Exception as e:
-        logger.error(f"テストデータの投入中にエラーが発生: {e}")
-        raise
-    finally:
-        db.disconnect()
 
 if __name__ == "__main__":
     main()

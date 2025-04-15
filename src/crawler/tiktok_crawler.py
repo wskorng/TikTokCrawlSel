@@ -694,9 +694,7 @@ def main():
     args = parser.parse_args()
 
     # データベース接続の初期化
-    db = Database()
-    
-    try:
+    with Database() as db:
         # 各リポジトリの初期化
         crawler_account_repo = CrawlerAccountRepository(db)
         favorite_user_repo = FavoriteUserRepository(db)
@@ -735,15 +733,6 @@ def main():
         finally:
             # クローラーの停止（Seleniumのクリーンアップ）
             crawler.stop()
-
-    except Exception:
-        logger.exception(f"DB接続状態でエラーが発生しました。DB接続を切断します。")
-        raise
-        
-    finally:
-        # データベース接続のクリーンアップ
-        db.disconnect()
-
 
 if __name__ == "__main__":
     main()

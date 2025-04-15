@@ -95,7 +95,6 @@ class FavoriteUserRepository:
             WHERE favorite_user_username = %s
         """
         self.db.execute_query(query, (last_crawled_at, username))
-        self.db.commit()
 
     def update_favorite_user_is_alive(self, username: str, is_alive: bool):
         """お気に入りアカウントの生存状態を更新
@@ -110,7 +109,6 @@ class FavoriteUserRepository:
             WHERE favorite_user_username = %s
         """
         self.db.execute_query(query, (is_alive, username))
-        self.db.commit()
 
 
 class VideoRepository:
