@@ -107,9 +107,9 @@ def parse_tiktok_video_url(url: str) -> Tuple[str, str]: # NOT NULL なのでエ
         account_username = parts[-3].strip("@")
         return video_id, account_username
     
-    except Exception as e:
+    except Exception:
         logger.exception(f"URLの解析に失敗: {url}")
-        raise e
+        raise
 
 
 def parse_tiktok_number(text: str) -> Optional[int]:
@@ -151,9 +151,10 @@ def parse_tiktok_number(text: str) -> Optional[int]:
             # 倍率をかけて整数化
             return int(number * multipliers[unit])
         
-        return None
+        raise ValueError(f"数値文字列の解析に失敗: {text}")
 
     except:
+        logger.warning(f"数値文字列の解析に失敗: {text}")
         return None
 
 
@@ -180,34 +181,29 @@ class TikTokCrawler:
         self.wait = None
         
     def start(self, crawler_account_id: Optional[int] = None): # crawler_account_id が None なら適当に持ってくる
-        try:
-            # クローラーアカウントを取得
-            if crawler_account_id is not None:
-                self.crawler_account = self.crawler_account_repo.get_crawler_account_by_id(crawler_account_id)
-                if not self.crawler_account:
-                    raise Exception(f"指定されたクローラーアカウント（ID: {crawler_account_id}）が見つかりません")
-            else:
-                self.crawler_account = self.crawler_account_repo.get_an_available_crawler_account()
-                if not self.crawler_account:
-                    raise Exception("利用可能なクローラーアカウントがありません")
+        # クローラーアカウントを取得
+        if crawler_account_id is not None:
+            self.crawler_account = self.crawler_account_repo.get_crawler_account_by_id(crawler_account_id)
+            if not self.crawler_account:
+                raise Exception(f"指定されたクローラーアカウント（ID: {crawler_account_id}）が見つかりません")
+        else:
+            self.crawler_account = self.crawler_account_repo.get_an_available_crawler_account()
+            if not self.crawler_account:
+                raise Exception("利用可能なクローラーアカウントがありません")
 
-            # Seleniumの設定
-            self.selenium_manager = SeleniumManager(self.crawler_account.proxy)
-            self.driver = self.selenium_manager.setup_driver()
-            self.wait = WebDriverWait(self.driver, 60)  # タイムアウトを60秒に変更
+        # Seleniumの設定
+        self.selenium_manager = SeleniumManager(self.crawler_account.proxy)
+        self.driver = self.selenium_manager.setup_driver()
+        self.wait = WebDriverWait(self.driver, 60)  # タイムアウトを60秒に変更
 
-            # ログイン
-            self._login()
+        # ログイン
+        self._login()
 
-            # 最終クロール時間を更新
-            self.crawler_account_repo.update_crawler_account_last_crawled(
-                self.crawler_account.id,
-                datetime.now()
-            )
-        except:
-            logger.exception(f"クローラーの開始に失敗")
-            self.stop()
-            raise
+        # 最終クロール時間を更新
+        self.crawler_account_repo.update_crawler_account_last_crawled(
+            self.crawler_account.id,
+            datetime.now()
+        )
 
     def stop(self):
         if self.selenium_manager:
@@ -227,6 +223,7 @@ class TikTokCrawler:
                 
         except Exception:
             logger.exception(f"ページのスクロールに失敗")
+            raise
     
     def scroll_element(self, element_selector: str, scroll_count: int = 3):
         """特定の要素内をスクロールする"""
@@ -262,6 +259,7 @@ class TikTokCrawler:
                     
         except Exception:
             logger.exception(f"要素のスクロールに失敗: {element_selector}")
+            raise
 
     def _login(self): # TikTokにログインする
         logger.info("TikTokにログイン中...")
@@ -571,19 +569,15 @@ class TikTokCrawler:
     def crawl_account_light(self, account: FavoriteAccount, max_videos: int = 100):
         logger.info(f"アカウント @{account.favorite_account_username} の軽いデータのクロールを開始")
 
-        # アカウントページに移動
         self.navigate_to_user_page(account.favorite_account_username)
         light_like_datas = self.get_video_light_like_datas_from_user_page(max_videos)
 
-        # 動画ページに移動
         first_url = light_like_datas[0]["video_url"]
         self.navigate_to_video_page(first_url)
         light_play_datas = self.get_video_light_play_datas_from_video_page_creator_videos_tab(max_videos+12) # ピン留めとかphoto投稿の影響でちゃんと一対一対応してるか怪しいんでね
         
-        # 動画の基本情報を保存
         self.parse_and_save_video_light_datas(light_like_datas, light_play_datas)
 
-        # アカウントの最終クロール時間を更新
         self.favorite_account_repo.update_favorite_account_last_crawled(
             account.favorite_account_username,
             datetime.now()
@@ -611,17 +605,25 @@ class TikTokCrawler:
     def crawl_account_heavy(self, account: FavoriteAccount, max_videos: int = 100):
         logger.info(f"アカウント @{account.favorite_account_username} の重いデータのクロールを開始")
 
-        # アカウントページに移動
         self.navigate_to_user_page(account.favorite_account_username)
         light_like_datas = self.get_video_light_like_datas_from_user_page(max_videos)
 
-        # 動画ページに移動
-        first_url = light_like_datas[0]["video_url"]
-        self.navigate_to_video_page(first_url)
-        heavy_data = self.get_video_heavy_data_from_video_page()
-        self.parse_and_save_video_heavy_data(heavy_data, light_like_datas[0]["video_thumbnail_url"])
-        self._random_sleep(10.0, 20.0) # こんくらいは見たほうがいいんじゃないかな未検証だけど
-        self.navigate_to_user_page_from_video_page()
+        logger.info(f"新着動画 {len(light_like_datas)}件に対し重いデータのクロールを行います")
+        for light_like_data in light_like_datas:
+            try:
+                self.navigate_to_video_page(light_like_data["video_url"])
+                try:
+                    heavy_data = self.get_video_heavy_data_from_video_page()
+                    self.parse_and_save_video_heavy_data(heavy_data, light_like_data["video_thumbnail_url"])
+                    self._random_sleep(10.0, 20.0) # こんくらいは見たほうがいいんじゃないかな未検証だけど
+                except Exception:
+                    logger.exception(f"動画ページを開いた状態でエラーが発生しました。動画ページを閉じてユーザーページに戻ります。")
+                    raise
+                finally:
+                    self.navigate_to_user_page_from_video_page()
+            except Exception:
+                logger.exception(f"動画 {light_like_data['video_url']} の重いデータのクロール中に失敗。継続します")
+                continue
 
         # アカウントの最終クロール時間を更新
         self.favorite_account_repo.update_favorite_account_last_crawled(
@@ -642,7 +644,7 @@ class TikTokCrawler:
             try:
                 self.crawl_account_heavy(account, max_videos_per_account)
             except Exception:
-                logger.exception(f"アカウント @{account.favorite_account_username} の重いデータのクロール中に失敗")
+                logger.exception(f"アカウント @{account.favorite_account_username} の重いデータのクロール中に失敗。継続します")
                 continue
         
         logger.info(f"クロール対象のお気に入りアカウント{len(favorite_accounts)}件に対し重いデータのクロールを完了しました")
@@ -718,7 +720,7 @@ def main():
             # TODO bothのとき被ってるとこ多いんで別関数で作ろう
                   
         except Exception:
-            logger.exception(f"クローラー起動後にエラー")
+            logger.exception(f"クローラー起動状態でエラーが発生しました。クローラーを停止します。")
             raise
         
         finally:
@@ -726,7 +728,7 @@ def main():
             crawler.stop()
 
     except Exception:
-        logger.exception(f"db接続後にエラー")
+        logger.exception(f"DB接続状態でエラーが発生しました。DB接続を切断します。")
         raise
         
     finally:
