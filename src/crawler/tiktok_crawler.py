@@ -358,6 +358,9 @@ class TikTokCrawler:
                     # 写真投稿の場合はスキップ
                     if "/photo/" in video_url:
                         continue
+
+                    # URLからvideo_idとaccount_usernameを抽出
+                    video_id, account_username = parse_tiktok_video_url(video_url)
                     
                     # サムネイル画像と動画の代替テキストを取得
                     thumbnail_element = video_element.find_element(By.CSS_SELECTOR, "img")
@@ -370,6 +373,8 @@ class TikTokCrawler:
                     
                     video_stats.append({
                         "video_url": video_url,
+                        "video_id": video_id,
+                        "account_username": account_username,
                         "video_thumbnail_url": thumbnail_url,
                         "video_alt_info_text": video_alt_info_text,
                         "like_count_text": like_count_text,
@@ -445,6 +450,26 @@ class TikTokCrawler:
             logger.exception(f"動画の重いデータの取得に失敗: {video_url}")
             return None
     
+    def navigate_to_user_page_from_video_page(self) -> bool:
+        logger.debug("動画ページの閉じるボタンをクリックしてユーザーページに戻ります...")
+        try:
+            close_button = self.wait.until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "[data-e2e='browse-close']"))
+            )
+            close_button.click()
+            self._random_sleep(1.0, 2.0)
+            
+            # ユーザーページの動画一覧が表示されるまで待機
+            self.wait.until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "[data-e2e='user-post-item']"))
+            )
+            logger.debug("ユーザーページに戻りました")
+            return True
+            
+        except Exception:
+            logger.exception(f"動画ページからユーザーページへの移動に失敗")
+            return False
+
     def navigate_to_video_page_creator_videos_tab(self) -> bool:
         logger.debug("動画ページの「クリエイターの動画」タブに移動中...")
         try:
@@ -571,15 +596,12 @@ class TikTokCrawler:
                 play_count_text = play_count_map.get(thumbnail_essence)
                 if not play_count_text:
                     play_count_not_found += 1
-                
-                # URLからvideo_idとaccount_usernameを抽出
-                video_id, account_username = parse_tiktok_video_url(like_data["video_url"])
 
                 data = VideoLightRawData(
                     id=None,
                     video_url=like_data["video_url"],
-                    video_id=video_id,
-                    account_username=account_username,
+                    video_id=like_data["video_id"],
+                    account_username=like_data["account_username"],
                     video_thumbnail_url=like_data["video_thumbnail_url"],
                     video_alt_info_text=like_data["video_alt_info_text"],
                     play_count_text=play_count_text,
@@ -615,10 +637,6 @@ class TikTokCrawler:
                 logger.info("クロール対象のアカウントが見つかりません")
                 return
 
-            # 既存の動画IDを取得（重複チェック用）
-            existing_video_ids = self.video_repo.get_existing_video_ids()
-            logger.debug(f"既存の動画ID数: {len(existing_video_ids)}")
-
             # 各アカウントの動画をクロール
             for account in favorite_accounts:
                 try:
@@ -626,23 +644,19 @@ class TikTokCrawler:
 
                     # アカウントページに移動
                     if not self.navigate_to_user_page(account.favorite_account_username):
-                        continue
+                        continue # これ失敗したら続行不能
                     light_like_datas = self.get_video_light_like_datas_from_user_page(max_videos_per_account)
                     if not light_like_datas:
-                        continue
+                        continue # これ失敗したら続行不能
 
                     # 動画ページに移動
                     first_url = light_like_datas[0]["video_url"]
                     if not self.navigate_to_video_page(first_url):
-                        continue
-                    # heavy_data = self.get_video_heavy_data_from_video_page()
-                    # if not heavy_data:
-                    #     continue
-                    # self.parse_and_save_video_heavy_data(heavy_data)
+                        continue # これ失敗したら続行不能
 
                     # 動画ページの「クリエイターの動画」タブに移動
                     if not self.navigate_to_video_page_creator_videos_tab():
-                        continue
+                        continue # これ失敗したら続行不能
                     light_play_datas = self.get_video_light_play_datas_from_video_page_creator_videos_tab(max_videos_per_account+12) # ピン留めとかphoto投稿の影響でちゃんと一対一対応してるか怪しいんでね
                     
                     # 動画の基本情報を保存
@@ -663,6 +677,67 @@ class TikTokCrawler:
         except Exception:
             logger.exception(f"クロール処理に失敗")
             raise
+
+
+    def crawl_favorite_accounts_heavy(self, max_videos_per_account: int = 10, max_accounts: int = 10):
+        try:
+            logger.info(f"クロール対象のお気に入りアカウント{max_accounts}件に対し重いデータのクロールを行います")
+            favorite_accounts = self.favorite_account_repo.get_favorite_accounts(
+                self.crawler_account.id,
+                limit=max_accounts
+            )
+
+            if not favorite_accounts:
+                logger.info("クロール対象のアカウントが見つかりません")
+                return
+
+            # 各アカウントの動画をクロール
+            for account in favorite_accounts:
+                try:
+                    logger.info(f"アカウント @{account.favorite_account_username} のクロールを開始")
+
+                    # 既存の動画IDを取得（既存動画チェック用）
+                    existing_video_ids = self.video_repo.get_existing_video_ids()
+                    logger.debug(f"既存の動画ID数: {len(existing_video_ids)}")
+
+                    # アカウントページに移動
+                    if not self.navigate_to_user_page(account.favorite_account_username):
+                        continue
+                    light_like_datas = self.get_video_light_like_datas_from_user_page(max_videos_per_account)
+                    if not light_like_datas:
+                        continue
+
+                    for like_data in light_like_datas[:max_videos_per_account]:
+                        if like_data["video_id"] in existing_video_ids:
+                            break # 新着順なので今既存動画だったら次以降も既存動画
+
+                        # 動画ページに移動
+                        if not self.navigate_to_video_page(like_data["video_url"]):
+                            continue # これ失敗したら続行不能
+                        heavy_data = self.get_video_heavy_data_from_video_page()
+                        if not heavy_data:
+                            continue # これ失敗したら続行不能
+                        self.parse_and_save_video_heavy_data(heavy_data)
+                        self._random_sleep(10.0, 20.0) # 最低限見てる感出す
+                        if not self.navigate_to_user_page_from_video_page():
+                            break # これ失敗したらその後も続行不能
+
+
+                    # アカウントの最終クロール時間を更新
+                    self.favorite_account_repo.update_favorite_account_last_crawled(
+                        account.favorite_account_username,
+                        datetime.now()
+                    )
+
+                except Exception:
+                    logger.exception(f"アカウント @{account.favorite_account_username} のクロール中に失敗")
+                    continue
+            
+            logger.info(f"クロール対象のお気に入りアカウント{len(favorite_accounts)}件に対し重いデータのクロールを完了しました")
+        except Exception:
+            logger.exception(f"重いデータのクロール処理に失敗")
+            raise
+    
 
 
 def main():
