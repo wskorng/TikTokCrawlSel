@@ -65,7 +65,7 @@ python -m src.database.seed_data
 python -m src.crawler.tiktok_crawler light
 
 # 重いデータのみクロール（オプション指定例）
-python -m src.crawler.tiktok_crawler heavy --crawler-account-id 1 --max-videos-per-user 10 --max-users 5
+python -m src.crawler.tiktok_crawler heavy --crawler-account-id 1 --max-videos-per-user 10 --max-users 5 --recrawl
 
 # 両方クロール
 python -m src.crawler.tiktok_crawler both
@@ -74,6 +74,7 @@ python -m src.crawler.tiktok_crawler both
 --crawler-account-id INT     使用するクローラーアカウントのID
 --max-videos-per-user INT 1アカウントあたりの最大取得動画数（デフォルト: 50）
 --max-users INT          クロール対象の最大アカウント数（デフォルト: 10）
+--recrawl                既にクロール済みの動画を再クロールする
 ```
 
 4. [テスト時] 結果を確認

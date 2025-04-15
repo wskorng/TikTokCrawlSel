@@ -72,10 +72,6 @@ def insert_favorite_users(db: Database, crawler_account_id: int):
             "priority": 100
         },
         {
-            "username": "michaeljackton.official",  # マイケルジャクトン
-            "priority": 100
-        },
-        {
             "username": "fukada0318",  # 深田えいみ
             "priority": 100
         },
@@ -89,10 +85,6 @@ def insert_favorite_users(db: Database, crawler_account_id: int):
         },
         {
             "username": "unpai3",  # うんぱい
-            "priority": 100
-        },
-        {
-            "username": "uchiyamasan",  # 内山さん（Uchiyamasan）
             "priority": 100
         },
         {

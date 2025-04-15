@@ -588,172 +588,69 @@ class TikTokCrawler:
         logger.info(f"動画の軽いデータをパースおよび保存しました: {len(light_like_datas)}件、うちplay_count_textが取れなかったもの: {play_count_not_found}件")
 
 
-    def crawl_user_light(self, user: FavoriteUser, max_videos: int = 100):
-        logger.info(f"ユーザー @{user.favorite_user_username} の軽いデータのクロールを開始")
 
-        try:
-            self.navigate_to_user_page(user.favorite_user_username)
-        except self.UserNotFoundException:
-            logger.error(f"ユーザー @{user.favorite_user_username} は存在しないので、このユーザーに対する軽いデータのクロールを中断します")
-            return False
-        except Exception:
-            raise
-        
-        light_like_datas = self.get_video_light_like_datas_from_user_page(max_videos)
-
-        first_url = light_like_datas[0]["video_url"]
-        self.navigate_to_video_page(first_url)
-        self.navigate_to_video_page_creator_videos_tab()
-        light_play_datas = self.get_video_light_play_datas_from_video_page_creator_videos_tab(max_videos+12) # ピン留めとかphoto投稿の影響でちゃんと一対一対応してるか怪しいんでね
-        
-        self.parse_and_save_video_light_datas(light_like_datas, light_play_datas)
-
-        self.favorite_user_repo.update_favorite_user_last_crawled(
-            user.favorite_user_username,
-            datetime.now()
-        )
-        logger.info(f"ユーザー @{user.favorite_user_username} の軽いデータのクロールを完了しました")
-
-
-    def crawl_favorite_users_light(self, max_videos_per_user: int = 100, max_users: int = 10):
-        logger.info(f"クロール対象のお気に入りユーザー{max_users}件に対し軽いデータのクロールを行います")
-        favorite_users = self.favorite_user_repo.get_favorite_users(
-            self.crawler_account.id,
-            limit=max_users
-        )
-
-        for user in favorite_users:
-            try:
-                self.crawl_user_light(user, max_videos_per_user)
-            except KeyboardInterrupt:
-                raise
-            except Exception:
-                logger.exception(f"ユーザー @{user.favorite_user_username} の軽いデータのクロール中に失敗")
-                continue
-            
-        logger.info(f"クロール対象のお気に入りユーザー{len(favorite_users)}件に対し軽いデータのクロールを完了しました")
-
-
-    def crawl_user_heavy(self, user: FavoriteUser, max_videos: int = 100, recrawl:bool = False):
+    def crawl_user(self, user: FavoriteUser, light_or_heavy: str = "both", max_videos_per_user: int = 100, recrawl: bool = False):
+        # light_or_heavy: "light"(軽いデータのみ), "heavy"(重いデータのみ), "both"(軽重両方)
+        # max_videos_per_user: 1ユーザーあたりの動画数
         # recrawl: 既に重いデータを取得済みの動画を再取得するかどうか
-        logger.info(f"ユーザー @{user.favorite_user_username} の重いデータのクロールを開始")
-
-        self.navigate_to_user_page(user.favorite_user_username)
-        light_like_datas = self.get_video_light_like_datas_from_user_page(max_videos)
-        if not recrawl:
-            existing_video_ids = self.video_repo.get_existing_heavy_data_video_ids(user.favorite_user_username)
-            light_like_datas = [light_like_data for light_like_data in light_like_datas if light_like_data["video_id"] not in existing_video_ids]
-
-        logger.info(f"動画 {len(light_like_datas)}件に対し重いデータのクロールを行います")
-        for light_like_data in light_like_datas:
-            try:
-                self.navigate_to_video_page(light_like_data["video_url"])
-                try:
-                    heavy_data = self.get_video_heavy_data_from_video_page()
-                    self.parse_and_save_video_heavy_data(heavy_data, light_like_data["video_thumbnail_url"])
-                    self._random_sleep(10.0, 20.0) # こんくらいは見たほうがいいんじゃないかな未検証だけど
-                except Exception:
-                    logger.exception(f"動画ページを開いた状態でエラーが発生しました。動画ページを閉じてユーザーページに戻ります。")
-                    raise
-                finally:
-                    self.navigate_to_user_page_from_video_page()
-            except KeyboardInterrupt:
-                raise
-            except self.UserNotFoundException:
-                logger.info(f"ユーザー @{light_like_data['user_username']} は存在しないので、このユーザーに対する重いデータのクロールを中断します")
-                return False
-            except Exception:
-                logger.exception(f"動画 {light_like_data['video_url']} の重いデータのクロール中に失敗。スキップします")
-                continue
-
-        self.favorite_user_repo.update_favorite_user_last_crawled(
-            user.favorite_user_username,
-            datetime.now()
-        )
-        logger.info(f"ユーザー @{user.favorite_user_username} の重いデータのクロールを完了しました")
-
-
-    def crawl_favorite_users_heavy(self, max_videos_per_user: int = 100, max_users: int = 10, recrawl: bool = False):
-        logger.info(f"クロール対象のお気に入りユーザー{max_users}件に対し重いデータのクロールを行います")
-        favorite_users = self.favorite_user_repo.get_favorite_users(
-            self.crawler_account.id,
-            limit=max_users
-        )
-
-        for user in favorite_users:
-            try:
-                self.crawl_user_heavy(user, max_videos_per_user=max_videos_per_user, recrawl=recrawl)
-            except KeyboardInterrupt:
-                raise
-            except Exception:
-                logger.exception(f"ユーザー @{user.favorite_user_username} の重いデータのクロール中に失敗。スキップします")
-                continue
-        
-        logger.info(f"クロール対象のお気に入りユーザー{len(favorite_users)}件に対し重いデータのクロールを完了しました")
-
-    
-
-    def crawl_user_both(self, user: FavoriteUser, max_videos_per_user: int = 100, recrawl: bool = False):
-        # crawl_user_lightをしてからcrawl_user_heavyをするのと同じ結果を得られる関数。
-        # ただし1点だけ違う点があって、両方終わってからFavoriteUserのlast_crawled_atを更新する。
-        # 重複した読み込みを避けるために作った関数です。
-        logger.info(f"ユーザー @{user.favorite_user_username} の軽重両方のデータのクロールを開始")
+        logger.info(f"ユーザー @{user.favorite_user_username} の{light_or_heavy}データのクロールを開始")
 
         try:
             self.navigate_to_user_page(user.favorite_user_username)
         except self.UserNotFoundException:
-            logger.error(f"ユーザー @{user.favorite_user_username} は存在しないので、このユーザーに対する軽重両方のデータのクロールを中断します")
-            return False
+            logger.error(f"ユーザー @{user.favorite_user_username} は存在しないので、このユーザーに対するクロールを中断します")
+            return False # ユーザー単位でしか問題にならないエラーなのでここで処置完了としてよい
         except Exception:
             raise
         
         light_like_datas = self.get_video_light_like_datas_from_user_page(max_videos_per_user)
 
-        first_url = light_like_datas[0]["video_url"]
-        self.navigate_to_video_page(first_url)
-        self.navigate_to_video_page_creator_videos_tab()
-        light_play_datas = self.get_video_light_play_datas_from_video_page_creator_videos_tab(max_videos_per_user+12) # ピン留めとかphoto投稿の影響でちゃんと一対一対応してるか怪しいんでね
+        if light_or_heavy == "light" or light_or_heavy == "both":
+            logger.info(f"ユーザー @{user.favorite_user_username} の軽いデータのクロールを開始")
+            first_url = light_like_datas[0]["video_url"]
+            self.navigate_to_video_page(first_url)
+            self.navigate_to_video_page_creator_videos_tab()
+            light_play_datas = self.get_video_light_play_datas_from_video_page_creator_videos_tab(max_videos_per_user+12) # ピン留めとかphoto投稿の影響でちゃんと一対一対応してるか怪しいんでね
+            
+            self.parse_and_save_video_light_datas(light_like_datas, light_play_datas)
+            logger.info(f"ユーザー @{user.favorite_user_username} の軽いデータのクロールを完了しました。重いデータのクロールに入ります")
+
+            self.navigate_to_user_page_from_video_page()
         
-        self.parse_and_save_video_light_datas(light_like_datas, light_play_datas)
+        if light_or_heavy == "heavy" or light_or_heavy == "both":
+            logger.info(f"ユーザー @{user.favorite_user_username} の重いデータのクロールを開始")
+            if not recrawl:
+                existing_video_ids = self.video_repo.get_existing_heavy_data_video_ids(user.favorite_user_username)
+                light_like_datas = [light_like_data for light_like_data in light_like_datas if light_like_data["video_id"] not in existing_video_ids]
 
-        logger.info(f"ユーザー @{user.favorite_user_username} の軽いデータのクロールを完了しました。重いデータのクロールに入ります")
-
-        self.navigate_to_user_page_from_video_page()
-        if not recrawl:
-            existing_video_ids = self.video_repo.get_existing_heavy_data_video_ids(user.favorite_user_username)
-            light_like_datas = [light_like_data for light_like_data in light_like_datas if light_like_data["video_id"] not in existing_video_ids]
-
-        logger.info(f"動画 {len(light_like_datas)}件に対し重いデータのクロールを行います")
-        for light_like_data in light_like_datas:
-            try:
-                self.navigate_to_video_page(light_like_data["video_url"])
+            logger.info(f"動画 {len(light_like_datas)}件に対し重いデータのクロールを行います")
+            for light_like_data in light_like_datas:
                 try:
-                    heavy_data = self.get_video_heavy_data_from_video_page()
-                    self.parse_and_save_video_heavy_data(heavy_data, light_like_data["video_thumbnail_url"])
-                    self._random_sleep(10.0, 20.0) # こんくらいは見たほうがいいんじゃないかな未検証だけど
-                except Exception:
-                    logger.exception(f"動画ページを開いた状態でエラーが発生しました。動画ページを閉じてユーザーページに戻ります。")
+                    self.navigate_to_video_page(light_like_data["video_url"])
+                    try:
+                        heavy_data = self.get_video_heavy_data_from_video_page()
+                        self.parse_and_save_video_heavy_data(heavy_data, light_like_data["video_thumbnail_url"])
+                        self._random_sleep(10.0, 20.0) # こんくらいは見たほうがいいんじゃないかな未検証だけど
+                    except Exception:
+                        logger.exception(f"動画ページを開いた状態でエラーが発生しました。動画ページを閉じてユーザーページに戻ります。")
+                        raise
+                    finally:
+                        self.navigate_to_user_page_from_video_page()
+                except KeyboardInterrupt:
                     raise
-                finally:
-                    self.navigate_to_user_page_from_video_page()
-            except KeyboardInterrupt:
-                raise
-            except self.UserNotFoundException:
-                logger.info(f"ユーザー @{light_like_data['user_username']} は存在しないので、このユーザーに対する重いデータのクロールを中断します")
-                return False
-            except Exception:
-                logger.exception(f"動画 {light_like_data['video_url']} の重いデータのクロール中に失敗。スキップします")
-                continue
+                except Exception:
+                    logger.exception(f"動画 {light_like_data['video_url']} の重いデータのクロール中に失敗。スキップします")
+                    continue
 
         self.favorite_user_repo.update_favorite_user_last_crawled(
             user.favorite_user_username,
             datetime.now()
         )
-        logger.info(f"ユーザー @{user.favorite_user_username} の軽重両方のデータのクロールを完了しました")
+        logger.info(f"ユーザー @{user.favorite_user_username} の{light_or_heavy}データのクロールを完了しました")
 
 
-    def crawl_favorite_users_both(self, max_videos_per_user: int = 100, max_users: int = 10, recrawl: bool = False):
-        logger.info(f"クロール対象のお気に入りユーザー{max_users}件に対し軽重両方のデータのクロールを行います")
+    def crawl_favorite_users(self, light_or_heavy: str = "both", max_videos_per_user: int = 100, max_users: int = 10, recrawl: bool = False):
+        logger.info(f"クロール対象のお気に入りユーザー{max_users}件に対し{light_or_heavy}データのクロールを行います")
         favorite_users = self.favorite_user_repo.get_favorite_users(
             self.crawler_account.id,
             limit=max_users
@@ -761,14 +658,14 @@ class TikTokCrawler:
 
         for user in favorite_users:
             try:
-                self.crawl_user_both(user, max_videos_per_user=max_videos_per_user, recrawl=recrawl)
+                self.crawl_user(user, light_or_heavy=light_or_heavy, max_videos_per_user=max_videos_per_user, recrawl=recrawl)
             except KeyboardInterrupt:
                 raise
             except Exception:
-                logger.exception(f"ユーザー @{user.favorite_user_username} の軽重両方のデータのクロール中に失敗。スキップします")
+                logger.exception(f"ユーザー @{user.favorite_user_username} の{light_or_heavy}データのクロール中に失敗。スキップします")
                 continue
         
-        logger.info(f"クロール対象のお気に入りユーザー{len(favorite_users)}件に対し軽重両方のデータのクロールを完了しました")
+        logger.info(f"クロール対象のお気に入りユーザー{len(favorite_users)}件に対し{light_or_heavy}データのクロールを完了しました")
 
 
 def main():
@@ -823,27 +720,12 @@ def main():
             video_repo=video_repo,
             crawler_account_id=args.crawler_account_id
         ) as crawler:
-            # モードに応じてクロール
-            if args.mode == "light":
-                crawler.crawl_favorite_users_light(
-                    max_videos_per_user=args.max_videos_per_user,
-                    max_users=args.max_users,
-                    recrawl=args.recrawl
-                )
-            
-            if args.mode == "heavy":
-                crawler.crawl_favorite_users_heavy(
-                    max_videos_per_user=args.max_videos_per_user,
-                    max_users=args.max_users,
-                    recrawl=args.recrawl
-                )
-
-            if args.mode == "both":
-                crawler.crawl_favorite_users_both(
-                    max_videos_per_user=args.max_videos_per_user,
-                    max_users=args.max_users,
-                    recrawl=args.recrawl
-                )
+            crawler.crawl_favorite_users(
+                light_or_heavy=args.mode,
+                max_videos_per_user=args.max_videos_per_user,
+                max_users=args.max_users,
+                recrawl=args.recrawl
+            )
 
 if __name__ == "__main__":
     import sys
