@@ -20,6 +20,7 @@ TikTok動画の再生数といいね数の推移データを収集するクロ�
   - アカウントの利用状況を追跡
 
 ## 環境構築
+### 仮想環境の作成
 
 ```bash
 # 仮想環境の作成
@@ -35,7 +36,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## 環境変数の設定
+### 環境変数の設定
 
 `.env`ファイルを作成し、以下の環境変数を設定してください：
 
@@ -46,8 +47,42 @@ DB_PASSWORD=your_password
 DB_NAME=tiktok_crawler
 ```
 
-## データベース構造
+## 使い方
+1. データベースの初期化
+```bash
+python -m src.database.create_tables
+```
 
+2. [テスト時] テストデータを投入
+src/database/seed_data.py のcrawler_accountsの username, password をあなたのものにしてから
+```bash
+python -m src.database.seed_data
+```
+
+3. [テスト時] クローラーを実行してみる
+```bash
+# 軽いデータのみクロール
+python -m src.crawler.tiktok_crawler light
+
+# 重いデータのみクロール（オプション指定例）
+python -m src.crawler.tiktok_crawler heavy --crawler-account-id 1 --max-videos-per-account 10 --max-accounts 5
+
+# 両方クロール
+python -m src.crawler.tiktok_crawler both
+
+# オプション一覧
+--crawler-account-id INT     使用するクローラーアカウントのID
+--max-videos-per-account INT 1アカウントあたりの最大取得動画数（デフォルト: 50）
+--max-accounts INT          クロール対象の最大アカウント数（デフォルト: 10）
+```
+
+4. [テスト時] 結果を確認
+```bash
+python -m src.database.show_data
+```
+./output/database_dump にcsvで出力されます
+
+## DB構造
 ### crawler_accounts: クローラーアカウント管理
 - id: int (PK, 自動採番)
 - username: str (クローラーのTikTokアカウント名)
@@ -64,55 +99,48 @@ DB_NAME=tiktok_crawler
 - crawl_priority: int (クロール優先度)
 - last_crawled_at: datetime | null (最終クロール日時、未クロールの場合はnull)
 
-### video_desc_raw_data: 動画の基本情報
+### video_light_raw_data: 動画の軽いデータ
 - id: int (PK, 自動採番)
+- video_url: str (動画のURL)
 - video_id: str (TikTokの動画ID)
-- url: str (動画のURL)
+- account_username: str (投稿者のアカウント名)
+- video_thumbnail_url: str (サムネイル画像URL)
+- video_alt_info_text: str (動画の代替テキスト)
+- play_count_text: str (表示形式のままの再生数)
+- play_count: int | null (パース後の再生数)
+- like_count_text: str (表示形式のままのいいね数)
+- like_count: int | null (パース後のいいね数)
+- crawled_at: datetime (クロール日時)
+- crawling_algorithm: str (クロールアルゴリズムの名前)
+
+### video_heavy_raw_data: 動画の重いデータ
+- id: int (PK, 自動採番)
+- video_url: str (動画のURL)
+- video_id: str (TikTokの動画ID)
 - account_username: str (投稿者のアカウント名)
 - account_nickname: str (投稿者のニックネーム)
-- title: str (動画のタイトル)
-- posted_at_text: str (投稿日時の表示形式)
-- posted_at: datetime | null (パース後の投稿日時、パース失敗時はnull)
+- video_thumbnail_url: str (サムネイル画像URL)
+- video_title: str (動画のタイトル)
+- post_time_text: str (投稿日時の表示形式)
+- post_time: datetime | null (パース後の投稿日時)
+- audio_url: str | null (音声ファイルURL)
+- audio_info_text: str | null (音声情報テキスト)
+- audio_id: str | null (音声ID)
+- audio_title: str | null (音声タイトル)
+- audio_author_name: str | null (音声作者名)
+- play_count_text: str | null (表示形式のままの再生数)
+- play_count: int | null (パース後の再生数)
+- like_count_text: str (表示形式のままのいいね数)
+- like_count: int | null (パース後のいいね数)
+- comment_count_text: str | null (表示形式のままのコメント数)
+- comment_count: int | null (パース後のコメント数)
+- collect_count_text: str | null (表示形式のままのコレクト数)
+- collect_count: int | null (パース後のコレクト数)
+- share_count_text: str | null (表示形式のままのシェア数)
+- share_count: int | null (パース後のシェア数)
 - crawled_at: datetime (クロール日時)
+- crawling_algorithm: str (クロールアルゴリズムの名前)
 
-### video_like_stat_raw_data: 動画のいいね数データ
-- id: int (PK, 自動採番)
-- video_id: str (TikTokの動画ID)
-- url: str (動画のURL)
-- account_username: str (投稿者のアカウント名)
-- count_text: str (表示形式のままのいいね数、例: "1.5M")
-- count: int | null (パース後の数値、パース失敗時はnull)
-- crawled_at: datetime (クロール日時)
-
-### video_play_stat_raw_data: 動画の再生数データ
-- id: int (PK, 自動採番)
-- video_id: str (TikTokの動画ID)
-- url: str (動画のURL)
-- account_username: str (投稿者のアカウント名)
-- count_text: str (表示形式のままの再生数、例: "2.3M")
-- count: int | null (パース後の数値、パース失敗時はnull)
-- crawled_at: datetime (クロール日時)
-
-## 使い方
-
-1. データベースを初期化
-```bash
-python -m src.database.create_tables
-```
-
-2. テストデータを投入（オプション）
-```bash
-python -m src.database.seed_data
-```
-
-3. クローラーを実行
-```bash
-# ランダムなクローラーアカウントを使用
-python -m src.crawler.tiktok_crawler
-
-# 特定のクローラーアカウントを指定
-python -m src.crawler.tiktok_crawler --account-id 1
-```
 
 ## 注意事項
 
