@@ -21,19 +21,19 @@ CREATE_TABLES_SQL = [
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
-    CREATE TABLE IF NOT EXISTS favorite_accounts (
+    CREATE TABLE IF NOT EXISTS favorite_users (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        favorite_account_username VARCHAR(255) NOT NULL,
+        favorite_user_username VARCHAR(255) NOT NULL,
         crawler_account_id INT,
-        favorite_account_is_alive BOOLEAN NOT NULL DEFAULT TRUE,
+        favorite_user_is_alive BOOLEAN NOT NULL DEFAULT TRUE,
         crawl_priority INT NOT NULL DEFAULT 10,
         last_crawled_at DATETIME,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (crawler_account_id) REFERENCES crawler_accounts(id),
-        INDEX idx_username (favorite_account_username),
+        INDEX idx_username (favorite_user_username),
         INDEX idx_crawler_account (crawler_account_id),
-        INDEX idx_is_alive (favorite_account_is_alive),
+        INDEX idx_is_alive (favorite_user_is_alive),
         INDEX idx_priority_last_crawled (crawl_priority, last_crawled_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
@@ -42,8 +42,8 @@ CREATE_TABLES_SQL = [
         id INT AUTO_INCREMENT PRIMARY KEY,
         video_url TEXT NOT NULL,
         video_id VARCHAR(255) NOT NULL,
-        account_username VARCHAR(255) NOT NULL,
-        account_nickname VARCHAR(255) NOT NULL,
+        user_username VARCHAR(255) NOT NULL,
+        user_nickname VARCHAR(255) NOT NULL,
         video_thumbnail_url TEXT NOT NULL,
         video_title TEXT NOT NULL,
         post_time_text VARCHAR(255),
@@ -67,7 +67,7 @@ CREATE_TABLES_SQL = [
         crawling_algorithm VARCHAR(50) NOT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_video_id (video_id),
-        INDEX idx_account_username (account_username),
+        INDEX idx_user_username (user_username),
         INDEX idx_post_time (post_time),
         INDEX idx_crawled_at (crawled_at),
         INDEX idx_algorithm (crawling_algorithm)
@@ -78,7 +78,7 @@ CREATE_TABLES_SQL = [
         id INT AUTO_INCREMENT PRIMARY KEY,
         video_url TEXT NOT NULL,
         video_id VARCHAR(255) NOT NULL,
-        account_username VARCHAR(255) NOT NULL,
+        user_username VARCHAR(255) NOT NULL,
         video_thumbnail_url TEXT,
         video_alt_info_text TEXT,
         play_count_text VARCHAR(255),
@@ -89,7 +89,7 @@ CREATE_TABLES_SQL = [
         crawling_algorithm VARCHAR(50) NOT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_video_id (video_id),
-        INDEX idx_account_username (account_username),
+        INDEX idx_user_username (user_username),
         INDEX idx_crawled_at (crawled_at),
         INDEX idx_algorithm (crawling_algorithm)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci

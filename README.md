@@ -65,15 +65,15 @@ python -m src.database.seed_data
 python -m src.crawler.tiktok_crawler light
 
 # 重いデータのみクロール（オプション指定例）
-python -m src.crawler.tiktok_crawler heavy --crawler-account-id 1 --max-videos-per-account 10 --max-accounts 5
+python -m src.crawler.tiktok_crawler heavy --crawler-account-id 1 --max-videos-per-user 10 --max-users 5
 
 # 両方クロール
 python -m src.crawler.tiktok_crawler both
 
 # オプション一覧
 --crawler-account-id INT     使用するクローラーアカウントのID
---max-videos-per-account INT 1アカウントあたりの最大取得動画数（デフォルト: 50）
---max-accounts INT          クロール対象の最大アカウント数（デフォルト: 10）
+--max-videos-per-user INT 1アカウントあたりの最大取得動画数（デフォルト: 50）
+--max-users INT          クロール対象の最大アカウント数（デフォルト: 10）
 ```
 
 4. [テスト時] 結果を確認
@@ -91,11 +91,11 @@ python -m src.database.show_data
 - is_alive: bool (アカウントの有効性)
 - last_crawled_at: datetime | null (最終クロール日時、未クロールの場合はnull)
 
-### favorite_accounts: クロール対象アカウント管理
+### favorite_users: クロール対象アカウント管理
 - id: int (PK, 自動採番)
-- favorite_account_username: str (クロール対象のTikTokアカウント名)
+- favorite_user_username: str (クロール対象のTikTokアカウント名)
 - crawler_account_id: int | null (FK -> crawler_accounts.id、未割り当ての場合はnull)
-- favorite_account_is_alive: bool (アカウントの有効性)
+- favorite_user_is_alive: bool (アカウントの有効性)
 - crawl_priority: int (クロール優先度)
 - last_crawled_at: datetime | null (最終クロール日時、未クロールの場合はnull)
 
@@ -103,7 +103,7 @@ python -m src.database.show_data
 - id: int (PK, 自動採番)
 - video_url: str (動画のURL)
 - video_id: str (TikTokの動画ID)
-- account_username: str (投稿者のアカウント名)
+- user_username: str (投稿者のアカウント名)
 - video_thumbnail_url: str (サムネイル画像URL)
 - video_alt_info_text: str (動画の代替テキスト)
 - play_count_text: str (表示形式のままの再生数)
@@ -117,8 +117,8 @@ python -m src.database.show_data
 - id: int (PK, 自動採番)
 - video_url: str (動画のURL)
 - video_id: str (TikTokの動画ID)
-- account_username: str (投稿者のアカウント名)
-- account_nickname: str (投稿者のニックネーム)
+- user_username: str (投稿者のアカウント名)
+- user_nickname: str (投稿者のニックネーム)
 - video_thumbnail_url: str (サムネイル画像URL)
 - video_title: str (動画のタイトル)
 - post_time_text: str (投稿日時の表示形式)

@@ -12,11 +12,11 @@ class CrawlerAccount:
     last_crawled_at: Optional[datetime] # 初めてかもしれないので
 
 @dataclass
-class FavoriteAccount:
+class FavoriteUser:
     id: int # 自動採番
-    favorite_account_username: str
+    favorite_user_username: str
     crawler_account_id: Optional[int] # 未割り当てかもしれないので
-    favorite_account_is_alive: bool
+    favorite_user_is_alive: bool
     crawl_priority: int
     last_crawled_at: Optional[datetime] # 初めてかもしれないので
 
@@ -27,8 +27,8 @@ class VideoHeavyRawData:
     video_url: str = ""
     video_thumbnail_url: str = ""
     video_title: str = ""
-    account_username: str = ""
-    account_nickname: str = ""
+    user_username: str = ""
+    user_nickname: str = ""
     post_time_text: str = ""
     post_time: Optional[datetime] = None  # パースできないかもしれない
     audio_url: Optional[str] = None
@@ -54,9 +54,9 @@ class VideoLightRawData:
     id: Optional[int] = None  # 自動採番
     video_url: str = ""
     video_id: str = ""  # TikTokの動画IDそのまま
-    account_username: str = ""  # 動画を投稿したアカウントのユーザー名
+    user_username: str = ""  # 動画を投稿したアカウントのユーザー名
     video_thumbnail_url: str = ""
-    video_alt_info_text: str = ""  # {audio_author_name}の{audio_title}を使用して{account_nickname}が作成した{video_title}
+    video_alt_info_text: str = ""  # {audio_author_name}の{audio_title}を使用して{user_nickname}が作成した{video_title}
     play_count_text: Optional[str] = None
     play_count: Optional[int] = None
     like_count_text: Optional[str] = None

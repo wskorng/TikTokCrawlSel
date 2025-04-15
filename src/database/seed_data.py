@@ -40,7 +40,7 @@ def insert_crawler_accounts(db: Database) -> List[int]:
     
     return crawler_account_ids
 
-def insert_favorite_accounts(db: Database, crawler_account_id: int):
+def insert_favorite_users(db: Database, crawler_account_id: int):
     """お気に入りアカウントのテストデータを投入"""
     accounts = [
         {
@@ -128,10 +128,10 @@ def insert_favorite_accounts(db: Database, crawler_account_id: int):
     
     for account in accounts:
         query = """
-            INSERT INTO favorite_accounts (
-                favorite_account_username,
+            INSERT INTO favorite_users (
+                favorite_user_username,
                 crawler_account_id,
-                favorite_account_is_alive,
+                favorite_user_is_alive,
                 crawl_priority
             ) VALUES (
                 %s, %s, %s, %s
@@ -154,8 +154,8 @@ def insert_sample_video_data(db: Database):
     heavy_data = {
         "video_id": "7483836569720245511",
         "video_url": "https://www.tiktok.com/@cutie_street/video/7483836569720245511",
-        "account_username": "cutie_street",
-        "account_nickname": "CUTIE STREET",
+        "user_username": "cutie_street",
+        "user_nickname": "CUTIE STREET",
         "video_thumbnail_url": "https://p16-sign-va.tiktokcdn.com/obj/tos-maliva-p-0068/oQC3BSkCEfDFLKAEbAEQgANNBAKPDYwAfC7bAa",
         "video_title": "Our response to the Supreme Court decision.",
         "post_time_text": "2024-01-18",
@@ -181,7 +181,7 @@ def insert_sample_video_data(db: Database):
     
     query = """
         INSERT INTO video_heavy_raw_data (
-            video_id, video_url, account_username, account_nickname,
+            video_id, video_url, user_username, user_nickname,
             video_thumbnail_url, video_title, post_time_text, post_time,
             audio_url, audio_info_text, audio_id, audio_title, audio_author_name,
             play_count_text, play_count, like_count_text, like_count,
@@ -197,8 +197,8 @@ def insert_sample_video_data(db: Database):
         (
             heavy_data["video_id"],
             heavy_data["video_url"],
-            heavy_data["account_username"],
-            heavy_data["account_nickname"],
+            heavy_data["user_username"],
+            heavy_data["user_nickname"],
             heavy_data["video_thumbnail_url"],
             heavy_data["video_title"],
             heavy_data["post_time_text"],
@@ -228,9 +228,9 @@ def insert_sample_video_data(db: Database):
     light_data = {
         "video_id": heavy_data["video_id"],
         "video_url": heavy_data["video_url"],
-        "account_username": heavy_data["account_username"],
+        "user_username": heavy_data["user_username"],
         "video_thumbnail_url": heavy_data["video_thumbnail_url"],
-        "video_alt_info_text": f"{heavy_data['audio_author_name']}の{heavy_data['audio_title']}を使用して{heavy_data['account_nickname']}が作成した{heavy_data['video_title']}",
+        "video_alt_info_text": f"{heavy_data['audio_author_name']}の{heavy_data['audio_title']}を使用して{heavy_data['user_nickname']}が作成した{heavy_data['video_title']}",
         "play_count_text": heavy_data["play_count_text"],
         "play_count": heavy_data["play_count"],
         "like_count_text": heavy_data["like_count_text"],
@@ -241,7 +241,7 @@ def insert_sample_video_data(db: Database):
     
     query = """
         INSERT INTO video_light_raw_data (
-            video_id, video_url, account_username, video_thumbnail_url,
+            video_id, video_url, user_username, video_thumbnail_url,
             video_alt_info_text, play_count_text, play_count,
             like_count_text, like_count, crawled_at, crawling_algorithm
         ) VALUES (
@@ -253,7 +253,7 @@ def insert_sample_video_data(db: Database):
         (
             light_data["video_id"],
             light_data["video_url"],
-            light_data["account_username"],
+            light_data["user_username"],
             light_data["video_thumbnail_url"],
             light_data["video_alt_info_text"],
             light_data["play_count_text"],
@@ -283,7 +283,7 @@ def main():
             raise ValueError("クローラーアカウントの投入に失敗しました")
         
         # お気に入りアカウントの投入（最初のクローラーアカウントに紐付け）
-        insert_favorite_accounts(db, crawler_account_ids[0])
+        insert_favorite_users(db, crawler_account_ids[0])
         
         # サンプル動画データの投入
         insert_sample_video_data(db)

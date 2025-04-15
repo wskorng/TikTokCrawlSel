@@ -10,8 +10,8 @@ import random
 import time
 from typing import Optional, List, Dict, Tuple
 
-from ..database.models import CrawlerAccount, FavoriteAccount, VideoHeavyRawData, VideoLightRawData
-from ..database.repositories import CrawlerAccountRepository, FavoriteAccountRepository, VideoRepository
+from ..database.models import CrawlerAccount, FavoriteUser, VideoHeavyRawData, VideoLightRawData
+from ..database.repositories import CrawlerAccountRepository, FavoriteUserRepository, VideoRepository
 from ..database.database import Database
 from .selenium_manager import SeleniumManager
 from ..logger import setup_logger
@@ -91,21 +91,21 @@ def parse_tiktok_time(time_text: str, base_time: datetime) -> Optional[datetime]
 
 
 def parse_tiktok_video_url(url: str) -> Tuple[str, str]: # NOT NULL なのでエラー起きたらエラー投げる
-    """TikTokのURLからvideo_idとaccount_usernameを抽出する
+    """TikTokのURLからvideo_idとuser_usernameを抽出する
     
     Args:
         url: 解析するURL (e.g. "https://www.tiktok.com/@username/video/1234567890")
     
     Returns:
-        (video_id, account_username)のタプル。
+        (video_id, user_username)のタプル。
         例: ("1234567890", "username")
     """
     try:
         path = url.split("?")[0]
         parts = path.split("/")
         video_id = parts[-1]
-        account_username = parts[-3].strip("@")
-        return video_id, account_username
+        user_username = parts[-3].strip("@")
+        return video_id, user_username
     
     except Exception:
         logger.exception(f"URLの解析に失敗: {url}")
@@ -162,18 +162,18 @@ class TikTokCrawler:
     BASE_URL = "https://www.tiktok.com"
     
     def __init__(self, crawler_account_repo: CrawlerAccountRepository,
-                 favorite_account_repo: FavoriteAccountRepository,
+                 favorite_user_repo: FavoriteUserRepository,
                  video_repo: VideoRepository):
         """
         TikTokクローラーの初期化
         
         Args:
             crawler_account_repo: クローラーアカウントリポジトリ
-            favorite_account_repo: お気に入りアカウントリポジトリ
+            favorite_user_repo: お気に入りアカウントリポジトリ
             video_repo: 動画リポジトリ
         """
         self.crawler_account_repo = crawler_account_repo
-        self.favorite_account_repo = favorite_account_repo
+        self.favorite_user_repo = favorite_user_repo
         self.video_repo = video_repo
         self.crawler_account: Optional[CrawlerAccount] = None
         self.selenium_manager = None
@@ -309,7 +309,7 @@ class TikTokCrawler:
         title = self.driver.title
         if title.startswith("このアカウントは見つかりませんでした。"):
             logger.warning(f"ユーザー @{username} は存在しません。データベースのis_aliveをFalseに更新します。")
-            self.favorite_account_repo.update_favorite_account_is_alive(username, False)
+            self.favorite_user_repo.update_favorite_user_is_alive(username, False)
             raise self.UserNotFoundException(f"ユーザー @{username} は存在しません")
         
         # ユーザーページの読み込みを確認
@@ -339,8 +339,8 @@ class TikTokCrawler:
                 if "/photo/" in video_url:
                     continue
 
-                # URLからvideo_idとaccount_usernameを抽出
-                video_id, account_username = parse_tiktok_video_url(video_url)
+                # URLからvideo_idとuser_usernameを抽出
+                video_id, user_username = parse_tiktok_video_url(video_url)
                 
                 # サムネイル画像と動画の代替テキストを取得
                 thumbnail_element = video_element.find_element(By.CSS_SELECTOR, "img")
@@ -354,7 +354,7 @@ class TikTokCrawler:
                 video_stats.append({
                     "video_url": video_url,
                     "video_id": video_id,
-                    "account_username": account_username,
+                    "user_username": user_username,
                     "video_thumbnail_url": thumbnail_url,
                     "video_alt_info_text": video_alt_info_text,
                     "like_count_text": like_count_text,
@@ -395,8 +395,8 @@ class TikTokCrawler:
         logger.debug(f"動画の重いデータを取得中...")
     
         video_url = self.driver.current_url
-        account_username = self.driver.find_element(By.CSS_SELECTOR, "[data-e2e='user-title']").text
-        account_nickname = self.driver.find_element(By.CSS_SELECTOR, "[data-e2e='user-subtitle']").text
+        user_username = self.driver.find_element(By.CSS_SELECTOR, "[data-e2e='user-title']").text
+        user_nickname = self.driver.find_element(By.CSS_SELECTOR, "[data-e2e='user-subtitle']").text
         video_title = self.driver.find_element(By.CSS_SELECTOR, "[data-e2e='browse-video-desc']").text
         post_time_text = self.driver.find_element(By.CSS_SELECTOR, "[data-e2e='browser-nickname'] span:last-child").text
         audio_url = self.driver.find_element(By.CSS_SELECTOR, "[data-e2e='browse-music'] a").get_attribute("href")
@@ -409,8 +409,8 @@ class TikTokCrawler:
 
         return {
             "video_url": video_url,
-            "account_username": account_username,
-            "account_nickname": account_nickname,
+            "user_username": user_username,
+            "user_nickname": user_nickname,
             "video_title": video_title,
             "post_time_text": post_time_text,
             "audio_url": audio_url,
@@ -507,8 +507,8 @@ class TikTokCrawler:
             id=None,
             video_url=heavy_data["video_url"],
             video_id=video_id,
-            account_username=heavy_data["account_username"],
-            account_nickname=heavy_data["account_nickname"],
+            user_username=heavy_data["user_username"],
+            user_nickname=heavy_data["user_nickname"],
             video_thumbnail_url=thumbnail_url,
             video_title=heavy_data["video_title"],
             post_time_text=heavy_data.get("post_time_text"),
@@ -558,7 +558,7 @@ class TikTokCrawler:
                 id=None,
                 video_url=like_data["video_url"],
                 video_id=like_data["video_id"],
-                account_username=like_data["account_username"],
+                user_username=like_data["user_username"],
                 video_thumbnail_url=like_data["video_thumbnail_url"],
                 video_alt_info_text=like_data["video_alt_info_text"],
                 play_count_text=play_count_text,
@@ -576,10 +576,10 @@ class TikTokCrawler:
             return True
 
 
-    def crawl_account_light(self, account: FavoriteAccount, max_videos: int = 100):
-        logger.info(f"アカウント @{account.favorite_account_username} の軽いデータのクロールを開始")
+    def crawl_user_light(self, user: FavoriteUser, max_videos: int = 100):
+        logger.info(f"ユーザー @{user.favorite_user_username} の軽いデータのクロールを開始")
 
-        self.navigate_to_user_page(account.favorite_account_username)
+        self.navigate_to_user_page(user.favorite_user_username)
         light_like_datas = self.get_video_light_like_datas_from_user_page(max_videos)
 
         first_url = light_like_datas[0]["video_url"]
@@ -588,34 +588,34 @@ class TikTokCrawler:
         
         self.parse_and_save_video_light_datas(light_like_datas, light_play_datas)
 
-        self.favorite_account_repo.update_favorite_account_last_crawled(
-            account.favorite_account_username,
+        self.favorite_user_repo.update_favorite_user_last_crawled(
+            user.favorite_user_username,
             datetime.now()
         )
-        logger.info(f"アカウント @{account.favorite_account_username} の軽いデータのクロールを完了しました")
+        logger.info(f"ユーザー @{user.favorite_user_username} の軽いデータのクロールを完了しました")
 
 
-    def crawl_favorite_accounts_light(self, max_videos_per_account: int = 100, max_accounts: int = 10):
-        logger.info(f"クロール対象のお気に入りアカウント{max_accounts}件に対し軽いデータのクロールを行います")
-        favorite_accounts = self.favorite_account_repo.get_favorite_accounts(
+    def crawl_favorite_users_light(self, max_videos_per_user: int = 100, max_users: int = 10):
+        logger.info(f"クロール対象のお気に入りアカウント{max_users}件に対し軽いデータのクロールを行います")
+        favorite_users = self.favorite_user_repo.get_favorite_users(
             self.crawler_account.id,
-            limit=max_accounts
+            limit=max_users
         )
 
-        for account in favorite_accounts:
+        for user in favorite_users:
             try:
-                self.crawl_account_light(account, max_videos_per_account)
+                self.crawl_user_light(user, max_videos_per_user)
             except Exception:
-                logger.exception(f"アカウント @{account.favorite_account_username} の軽いデータのクロール中に失敗")
+                logger.exception(f"ユーザー @{user.favorite_user_username} の軽いデータのクロール中に失敗")
                 continue
             
-        logger.info(f"クロール対象のお気に入りアカウント{len(favorite_accounts)}件に対し軽いデータのクロールを完了しました")
+        logger.info(f"クロール対象のお気に入りアカウント{len(favorite_users)}件に対し軽いデータのクロールを完了しました")
 
 
-    def crawl_account_heavy(self, account: FavoriteAccount, max_videos: int = 100):
-        logger.info(f"アカウント @{account.favorite_account_username} の重いデータのクロールを開始")
+    def crawl_user_heavy(self, user: FavoriteUser, max_videos: int = 100):
+        logger.info(f"ユーザー @{user.favorite_user_username} の重いデータのクロールを開始")
 
-        self.navigate_to_user_page(account.favorite_account_username)
+        self.navigate_to_user_page(user.favorite_user_username)
         light_like_datas = self.get_video_light_like_datas_from_user_page(max_videos)
 
         logger.info(f"新着動画 {len(light_like_datas)}件に対し重いデータのクロールを行います")
@@ -635,29 +635,28 @@ class TikTokCrawler:
                 logger.exception(f"動画 {light_like_data['video_url']} の重いデータのクロール中に失敗。継続します")
                 continue
 
-        # アカウントの最終クロール時間を更新
-        self.favorite_account_repo.update_favorite_account_last_crawled(
-            account.favorite_account_username,
+        self.favorite_user_repo.update_favorite_user_last_crawled(
+            user.favorite_user_username,
             datetime.now()
         )
-        logger.info(f"アカウント @{account.favorite_account_username} の重いデータのクロールを完了しました")
+        logger.info(f"ユーザー @{user.favorite_user_username} の重いデータのクロールを完了しました")
 
 
-    def crawl_favorite_accounts_heavy(self, max_videos_per_account: int = 10, max_accounts: int = 10):
-        logger.info(f"クロール対象のお気に入りアカウント{max_accounts}件に対し重いデータのクロールを行います")
-        favorite_accounts = self.favorite_account_repo.get_favorite_accounts(
+    def crawl_favorite_users_heavy(self, max_videos_per_user: int = 10, max_users: int = 10):
+        logger.info(f"クロール対象のお気に入りアカウント{max_users}件に対し重いデータのクロールを行います")
+        favorite_users = self.favorite_user_repo.get_favorite_users(
             self.crawler_account.id,
-            limit=max_accounts
+            limit=max_users
         )
 
-        for account in favorite_accounts:
+        for user in favorite_users:
             try:
-                self.crawl_account_heavy(account, max_videos_per_account)
+                self.crawl_user_heavy(user, max_videos_per_user)
             except Exception:
-                logger.exception(f"アカウント @{account.favorite_account_username} の重いデータのクロール中に失敗。継続します")
+                logger.exception(f"ユーザー @{user.favorite_user_username} の重いデータのクロール中に失敗。継続します")
                 continue
         
-        logger.info(f"クロール対象のお気に入りアカウント{len(favorite_accounts)}件に対し重いデータのクロールを完了しました")
+        logger.info(f"クロール対象のお気に入りアカウント{len(favorite_users)}件に対し重いデータのクロールを完了しました")
     
 
 
@@ -680,13 +679,13 @@ def main():
         help="使用するクローラーアカウントのID"
     )
     parser.add_argument(
-        "--max-videos-per-account",
+        "--max-videos-per-user",
         type=int,
         default=50,
         help="1アカウントあたりの最大取得動画数（デフォルト: 50）"
     )
     parser.add_argument(
-        "--max-accounts",
+        "--max-users",
         type=int,
         default=10,
         help="クロール対象の最大アカウント数（デフォルト: 10）"
@@ -700,13 +699,13 @@ def main():
     try:
         # 各リポジトリの初期化
         crawler_account_repo = CrawlerAccountRepository(db)
-        favorite_account_repo = FavoriteAccountRepository(db)
+        favorite_user_repo = FavoriteUserRepository(db)
         video_repo = VideoRepository(db)
             
         # クローラーの初期化
         crawler = TikTokCrawler(
             crawler_account_repo=crawler_account_repo,
-            favorite_account_repo=favorite_account_repo,
+            favorite_user_repo=favorite_user_repo,
             video_repo=video_repo
         )
     
@@ -716,15 +715,15 @@ def main():
             
             # モードに応じてクロール
             if args.mode in ["light", "both"]:
-                crawler.crawl_favorite_accounts_light(
-                    max_videos_per_account=args.max_videos_per_account,
-                    max_accounts=args.max_accounts
+                crawler.crawl_favorite_users_light(
+                    max_videos_per_user=args.max_videos_per_user,
+                    max_users=args.max_users
                 )
             
             if args.mode in ["heavy", "both"]:
-                crawler.crawl_favorite_accounts_heavy(
-                    max_videos_per_account=args.max_videos_per_account,
-                    max_accounts=args.max_accounts
+                crawler.crawl_favorite_users_heavy(
+                    max_videos_per_user=args.max_videos_per_user,
+                    max_users=args.max_users
                 )
 
             # TODO bothのとき被ってるとこ多いんで別関数で作ろう

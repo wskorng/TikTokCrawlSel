@@ -102,11 +102,11 @@ reCAPTCHA的なの出たら検知して対応するのも要るわな それか�
 - is_alive: bool (Index, アカウントの有効性)
 - last_crawled_at: datetime | null (Index, 最終クロール日時、未クロールの場合はnull)
 
-### favorite_accounts: クロール対象アカウント管理
+### favorite_users: クロール対象アカウント管理
 - id: int (PK, 自動採番)
-- favorite_account_username: str (クロール対象のTikTokアカウント名)
+- favorite_user_username: str (クロール対象のTikTokアカウント名)
 - crawler_account_id: int | null (FK -> crawler_accounts.id、未割り当ての場合はnull)
-- favorite_account_is_alive: bool (Index, アカウントの有効性)
+- favorite_user_is_alive: bool (Index, アカウントの有効性)
 - crawl_priority: int (Index, クロール優先度)
 - last_crawled_at: datetime | null (Index, 最終クロール日時、未クロールの場合はnull)
 
@@ -114,8 +114,8 @@ reCAPTCHA的なの出たら検知して対応するのも要るわな それか�
 - id: int (PK, 自動採番)
 - video_url: str (動画URL)
 - video_id: str (Index, 動画ID)
-- account_username: str (Index, 投稿者のusername)
-- account_nickname: str (投稿者のnickname)
+- user_username: str (Index, 投稿者のusername)
+- user_nickname: str (投稿者のnickname)
 - video_thumbnail_url: str (動画のサムネイルURL)
 - video_title: str (動画のタイトル)
 - post_time_text: str | null (投稿日時)
@@ -143,7 +143,7 @@ crawling_algorithm次第で得られる情報が異なるので、こんだけ�
 - id: int (PK, 自動採番)
 - video_url: str (動画URL)
 - video_id: str (Index, 動画ID)
-- account_username: str (Index, 投稿者のusername)
+- user_username: str (Index, 投稿者のusername)
 - video_thumbnail_url: str (動画のサムネイルURL)
 - video_alt_info_text: str (alt情報)
 - play_count_text: str | null (再生数)
@@ -152,7 +152,7 @@ crawling_algorithm次第で得られる情報が異なるので、こんだけ�
 - like_count: int | null
 - crawled_at: datetime (Index, クロール日時)
 - crawling_algorithm: str (クロールアルゴリズム "tiktokapi":tiktokapiで収集 "selenium-human-like-1":今回実装する人間らしい動きでアクセス)(今後別のアルゴリズム(もっと精巧な人間アピだの人気順だのandroidエミュだの)でやる場合別名にしてね)
-マージできなかった軽いデータ後半を捨てるか、video_url,video_id,account_username抜きでvideo_thumbnail_urlをキーにアクセスできると主張し保存するか問題がある。まあ捨てていいと思うけど
+マージできなかった軽いデータ後半を捨てるか、video_url,video_id,user_username抜きでvideo_thumbnail_urlをキーにアクセスできると主張し保存するか問題がある。まあ捨てていいと思うけど
 
 
 # TODO

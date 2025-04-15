@@ -8,7 +8,7 @@ from .crawler.tiktok_crawler import TikTokCrawler
 from .database.database import Database
 from .database.models import (
     CrawlerAccount,
-    FavoriteAccount,
+    FavoriteUser,
     MovieDescRawData,
     MovieStatRawData
 )
@@ -39,13 +39,13 @@ def get_active_crawler_account(db: Database) -> CrawlerAccount:
         last_crawled_at=result[5]
     )
 
-def get_target_accounts(db: Database, limit: int = 5) -> List[FavoriteAccount]:
+def get_target_accounts(db: Database, limit: int = 5) -> List[FavoriteUser]:
     """クロール対象のアカウントを取得"""
     query = """
-        SELECT id, favorite_account_username, crawler_account_id,
-               favorite_account_is_alive, crawl_priority, last_crawled_at
-        FROM favorite_accounts
-        WHERE favorite_account_is_alive = TRUE
+        SELECT id, favorite_user_username, crawler_account_id,
+               favorite_user_is_alive, crawl_priority, last_crawled_at
+        FROM favorite_users
+        WHERE favorite_user_is_alive = TRUE
         ORDER BY 
             CASE 
                 WHEN last_crawled_at IS NULL THEN 1
@@ -59,11 +59,11 @@ def get_target_accounts(db: Database, limit: int = 5) -> List[FavoriteAccount]:
     results = cursor.fetchall()
     
     return [
-        FavoriteAccount(
+        FavoriteUser(
             id=row[0],
-            favorite_account_username=row[1],
+            favorite_user_username=row[1],
             crawler_account_id=row[2],
-            favorite_account_is_alive=row[3],
+            favorite_user_is_alive=row[3],
             crawl_priority=row[4],
             last_crawled_at=row[5]
         )
@@ -74,13 +74,13 @@ def save_movie_desc(db: Database, data: Dict):
     """動画の基本情報を保存"""
     query = """
         INSERT INTO movie_desc_raw_data (
-            id, url, account_username, account_nickname,
+            id, url, user_username, user_nickname,
             title, post_time_text, post_time, crawled_at
         ) VALUES (
             %s, %s, %s, %s, %s, %s, %s, %s
         ) ON DUPLICATE KEY UPDATE
-            account_username = VALUES(account_username),
-            account_nickname = VALUES(account_nickname),
+            user_username = VALUES(user_username),
+            user_nickname = VALUES(user_nickname),
             title = VALUES(title),
             post_time_text = VALUES(post_time_text),
             post_time = VALUES(post_time),
@@ -89,8 +89,8 @@ def save_movie_desc(db: Database, data: Dict):
     db.execute_query(
         query,
         (
-            data["id"], data["url"], data["account_username"],
-            data["account_nickname"], data["title"],
+            data["id"], data["url"], data["user_username"],
+            data["user_nickname"], data["title"],
             data["post_time_text"], data.get("post_time"),
             datetime.now()
         )
@@ -124,10 +124,10 @@ def update_crawler_account(db: Database, account_id: int):
     """
     db.execute_query(query, (datetime.now(), account_id))
 
-def update_favorite_account(db: Database, account_id: int):
+def update_favorite_user(db: Database, account_id: int):
     """お気に入りアカウントの最終クロール時刻を更新"""
     query = """
-        UPDATE favorite_accounts
+        UPDATE favorite_users
         SET last_crawled_at = %s
         WHERE id = %s
     """
@@ -158,7 +158,7 @@ def main():
         for target in target_accounts:
             try:
                 # ユーザーページに移動
-                if not crawler.navigate_to_user(target.favorite_account_username):
+                if not crawler.navigate_to_user(target.favorite_user_username):
                     continue
                 
                 # 動画一覧を取得
@@ -187,10 +187,10 @@ def main():
                         continue
                 
                 # クロール完了を記録
-                update_favorite_account(db, target.id)
+                update_favorite_user(db, target.id)
                 
             except Exception as e:
-                logger.error(f"アカウント {target.favorite_account_username} の処理中にエラー: {e}")
+                logger.error(f"アカウント {target.favorite_user_username} の処理中にエラー: {e}")
                 continue
             
         # クローラーアカウントの使用を記録
