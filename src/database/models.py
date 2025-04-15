@@ -58,8 +58,8 @@ class VideoLightRawData:
     video_thumbnail_url: str = ""
     video_alt_info_text: str = ""  # {audio_author_name}の{audio_title}を使用して{account_nickname}が作成した{video_title}
     play_count_text: Optional[str] = None
-    like_count_text: Optional[str] = None
     play_count: Optional[int] = None
+    like_count_text: Optional[str] = None
     like_count: Optional[int] = None
     crawling_algorithm: str = ""
     crawled_at: datetime = datetime.now()

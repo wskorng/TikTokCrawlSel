@@ -72,6 +72,44 @@ def parse_tiktok_time(time_text: str, base_time: datetime) -> Optional[datetime]
         return None
 
 
+def parse_tiktok_video_url(url: str) -> Tuple[Optional[str], Optional[str]]:
+    """TikTokのURLからvideo_idとaccount_usernameを抽出する
+    
+    Args:
+        url: 解析するURL (e.g. "https://www.tiktok.com/@username/video/1234567890")
+    
+    Returns:
+        (video_id, account_username)のタプル。解析できない場合はNone。
+        例: ("1234567890", "username")
+    """
+    if not url:
+        return None, None
+
+    try:
+        # URLからクエリパラメータを除去
+        if "?" in url:
+            url = url.split("?")[0]
+
+        # URLのパスを分割
+        # 例: ["https:", "", "www.tiktok.com", "@username", "video", "1234567890"]
+        parts = url.split("/")
+        
+        # video_idは最後のセグメント
+        video_id = parts[-1] if len(parts) > 0 else None
+        
+        # account_usernameは@から始まるセグメント
+        account_username = None
+        for part in parts:
+            if part.startswith("@"):
+                account_username = part[1:]  # @を除去
+                break
+        
+        return video_id, account_username
+
+    except:
+        return None, None
+
+
 def parse_tiktok_number(text: str) -> Optional[int]:
     """TikTok形式の数値文字列を解析する
     
@@ -258,6 +296,10 @@ class TikTokCrawler:
                     video_link = video_element.find_element(By.TAG_NAME, "a")
                     video_url = video_link.get_attribute("href")
                     
+                    # 写真投稿の場合はスキップ
+                    if "/photo/" in video_url:
+                        continue
+                    
                     # サムネイル画像と動画の代替テキストを取得
                     thumbnail_element = video_element.find_element(By.CSS_SELECTOR, "img")
                     thumbnail_url = thumbnail_element.get_attribute("src")
@@ -393,10 +435,7 @@ class TikTokCrawler:
 
     def parse_and_save_video_heavy_data(self, heavy_data: Dict, thumbnail_url: str) -> bool:
         try:
-            # URLからvideo_idを抽出
-            video_id = heavy_data["video_url"].split("/")[-1]
-            if "?" in video_id:
-                video_id = video_id.split("?")[0]
+            video_id, _ = parse_tiktok_video_url(heavy_data["video_url"])
 
             # audio_info_textから音声情報を抽出
             audio_title = None
@@ -447,24 +486,41 @@ class TikTokCrawler:
             logger.exception(f"動画の重いデータの保存に失敗")
             return False
 
+    def _extract_thumbnail_essence(self, thumbnail_url: str) -> str:
+        """サムネイルURLから一意な識別子を抽出する
+        例: https://p19-sign.tiktokcdn-us.com/obj/tos-useast5-p-0068-tx/oMnASW5J5CYEMAiRxDhIPnOAAfE1gGfD1UiBia?lk3s=81f88b70&...
+        → oMnASW5J5CYEMAiRxDhIPnOAAfE1gGfD1UiBia
+        """
+        try:
+            path = thumbnail_url
+            if "?" in path:
+                path = path.split("?")[0]
+            file_name = path.split("/")[-1]
+            if "." in file_name:
+                file_name = file_name.split(".")[0]
+            if "~" in file_name:
+                file_name = file_name.split("~")[0]
+            
+            return file_name
+        except Exception:
+            logger.exception(f"サムネイルURLからIDの抽出に失敗: {thumbnail_url}")
+            return thumbnail_url  # 失敗した場合は元のURLを返す
+
     def parse_and_save_video_light_datas(self, light_like_datas: List[Dict], light_play_datas: List[Dict]) -> bool:
         try:
-            # サムネイルURLをキーに、再生数をマッピング
+            # サムネイルURLの識別子をキーに、再生数をマッピング
             play_count_map = {}
             for play_data in light_play_datas:
-                play_count_map[play_data["video_thumbnail_url"]] = play_data["play_count_text"]
+                thumbnail_essence = self._extract_thumbnail_essence(play_data["video_thumbnail_url"])
+                play_count_map[thumbnail_essence] = play_data["play_count_text"]
             
             # いいね数データを処理し、再生数を追加
             for like_data in light_like_datas:
-                play_count_text = play_count_map.get(like_data["video_thumbnail_url"])
+                thumbnail_essence = self._extract_thumbnail_essence(like_data["video_thumbnail_url"])
+                play_count_text = play_count_map.get(thumbnail_essence)
                 
-                # video_urlからvideo_idとaccount_usernameを抽出
-                # 例: https://www.tiktok.com/@username/video/1234567890
-                url_parts = like_data["video_url"].split("/")
-                video_id = url_parts[-1]
-                account_username = url_parts[-3].replace("@", "")
-                if "?" in video_id:
-                    video_id = video_id.split("?")[0]
+                # URLからvideo_idとaccount_usernameを抽出
+                video_id, account_username = parse_tiktok_video_url(like_data["video_url"])
 
                 data = VideoLightRawData(
                     id=None,
@@ -473,21 +529,21 @@ class TikTokCrawler:
                     account_username=account_username,
                     video_thumbnail_url=like_data["video_thumbnail_url"],
                     video_alt_info_text=like_data["video_alt_info_text"],
-                    like_count_text=like_data["like_count_text"],
-                    like_count=parse_tiktok_number(like_data["like_count_text"]),
                     play_count_text=play_count_text,
                     play_count=parse_tiktok_number(play_count_text),
+                    like_count_text=like_data["like_count_text"],
+                    like_count=parse_tiktok_number(like_data["like_count_text"]),
                     crawling_algorithm=like_data["crawling_algorithm"],
                     crawled_at=datetime.now()
                 )
 
+                logger.info(f"動画の軽いデータを保存します: {data.video_id} -> {data.play_count}, {data.like_count}")
                 self.video_repo.save_video_light_data(data)
-                logger.info(f"動画の基本情報を保存: {data}")
             
             return True
             
         except Exception as e:
-            logger.exception(f"動画の基本情報の保存に失敗")
+            logger.exception(f"動画の軽いデータの保存に失敗しました")
             return False
             
 

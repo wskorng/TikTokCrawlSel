@@ -156,7 +156,7 @@ class VideoRepository:
             INSERT INTO video_light_raw_data (
                 video_url, video_id, account_username,
                 video_thumbnail_url, video_alt_info_text,
-                play_count_text, like_count_text, play_count, like_count,
+                play_count_text, play_count, like_count_text, like_count,
                 crawling_algorithm, crawled_at
             ) VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
@@ -165,11 +165,11 @@ class VideoRepository:
                 video_id = VALUES(video_id),
                 account_username = VALUES(account_username),
                 video_thumbnail_url = VALUES(video_thumbnail_url),
+                video_alt_info_text = VALUES(video_alt_info_text),
                 play_count_text = VALUES(play_count_text),
                 play_count = VALUES(play_count),
                 like_count_text = VALUES(like_count_text),
                 like_count = VALUES(like_count),
-                video_alt_info_text = VALUES(video_alt_info_text),
                 crawling_algorithm = VALUES(crawling_algorithm),
                 crawled_at = VALUES(crawled_at)
         """
