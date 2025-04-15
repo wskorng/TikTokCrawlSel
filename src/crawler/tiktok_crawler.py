@@ -242,7 +242,7 @@ class TikTokCrawler:
                 self.driver.execute_script(
                     "window.scrollTo(0, document.body.scrollHeight);"
                 )
-                self._random_sleep(2.0, 3.0)
+                self._random_sleep(3.0, 4.0) # TODO ここちゃんと画像表示をwaitすればthumbnail問題治るんじゃね
                 
         except Exception:
             logger.exception(f"ページのスクロールに失敗")
@@ -807,6 +807,8 @@ def main():
                     max_videos_per_account=args.max_videos_per_account,
                     max_accounts=args.max_accounts
                 )
+
+            # TODO bothのとき被ってるとこ多いんで別関数で作ろう
             
         finally:
             # クローラーの停止（Seleniumのクリーンアップ）
