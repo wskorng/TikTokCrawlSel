@@ -75,15 +75,15 @@ def save_movie_desc(db: Database, data: Dict):
     query = """
         INSERT INTO movie_desc_raw_data (
             id, url, account_username, account_nickname,
-            title, posted_at_text, posted_at, crawled_at
+            title, post_time_text, post_time, crawled_at
         ) VALUES (
             %s, %s, %s, %s, %s, %s, %s, %s
         ) ON DUPLICATE KEY UPDATE
             account_username = VALUES(account_username),
             account_nickname = VALUES(account_nickname),
             title = VALUES(title),
-            posted_at_text = VALUES(posted_at_text),
-            posted_at = VALUES(posted_at),
+            post_time_text = VALUES(post_time_text),
+            post_time = VALUES(post_time),
             crawled_at = VALUES(crawled_at)
     """
     db.execute_query(
@@ -91,7 +91,7 @@ def save_movie_desc(db: Database, data: Dict):
         (
             data["id"], data["url"], data["account_username"],
             data["account_nickname"], data["title"],
-            data["posted_at_text"], data.get("posted_at"),
+            data["post_time_text"], data.get("post_time"),
             datetime.now()
         )
     )

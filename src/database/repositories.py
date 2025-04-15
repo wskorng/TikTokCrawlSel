@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional, Set
 from .database import Database
-from .models import CrawlerAccount, FavoriteAccount, VideoDescRawData, VideoPlayStatRawData, VideoLikeStatRawData
+from .models import CrawlerAccount, FavoriteAccount, VideoHeavyRawData, VideoLightRawData
 from ..logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -101,54 +101,81 @@ class VideoRepository:
     def __init__(self, db: Database):
         self.db = db
 
-    def save_video_description(self, desc: VideoDescRawData):
-        """動画の説明データを保存"""
+    def save_video_heavy_data(self, data: VideoHeavyRawData):
+        """動画の詳細情報を保存"""
         query = """
-            INSERT INTO video_desc_raw_data (
-                video_id, url, account_username, account_nickname,
-                title, posted_at_text, posted_at, crawled_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-                url = VALUES(url),
-                account_username = VALUES(account_username),
-                account_nickname = VALUES(account_nickname),
-                title = VALUES(title),
-                posted_at_text = VALUES(posted_at_text),
-                posted_at = VALUES(posted_at),
+            INSERT INTO video_heavy_raw_data (
+                video_id, video_url, video_thumbnail_url, video_title,
+                creator_nickname, creator_unique_id, post_time_text, post_time,
+                audio_info_text, audio_id, audio_title, audio_author_name,
+                play_count_text, play_count, like_count_text, like_count,
+                comment_count_text, comment_count, collect_count_text, collect_count,
+                share_count_text, share_count, crawling_algorithm, crawled_at
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+            ) ON DUPLICATE KEY UPDATE
+                video_url = VALUES(video_url),
+                video_thumbnail_url = VALUES(video_thumbnail_url),
+                video_title = VALUES(video_title),
+                creator_nickname = VALUES(creator_nickname),
+                creator_unique_id = VALUES(creator_unique_id),
+                post_time_text = VALUES(post_time_text),
+                post_time = VALUES(post_time),
+                audio_info_text = VALUES(audio_info_text),
+                audio_id = VALUES(audio_id),
+                audio_title = VALUES(audio_title),
+                audio_author_name = VALUES(audio_author_name),
+                play_count_text = VALUES(play_count_text),
+                play_count = VALUES(play_count),
+                like_count_text = VALUES(like_count_text),
+                like_count = VALUES(like_count),
+                comment_count_text = VALUES(comment_count_text),
+                comment_count = VALUES(comment_count),
+                collect_count_text = VALUES(collect_count_text),
+                collect_count = VALUES(collect_count),
+                share_count_text = VALUES(share_count_text),
+                share_count = VALUES(share_count),
+                crawling_algorithm = VALUES(crawling_algorithm),
                 crawled_at = VALUES(crawled_at)
         """
         self.db.execute_query(query, (
-            desc.video_id, desc.url, desc.account_username, desc.account_nickname,
-            desc.title, desc.posted_at_text, desc.posted_at, desc.crawled_at
+            data.video_id, data.video_url, data.video_thumbnail_url, data.video_title,
+            data.creator_nickname, data.creator_unique_id, data.post_time_text, data.post_time,
+            data.audio_info_text, data.audio_id, data.audio_title, data.audio_author_name,
+            data.play_count_text, data.play_count, data.like_count_text, data.like_count,
+            data.comment_count_text, data.comment_count, data.collect_count_text, data.collect_count,
+            data.share_count_text, data.share_count, data.crawling_algorithm, data.crawled_at
         ))
 
-    def save_video_play_stats(self, stats: VideoPlayStatRawData):
-        """動画の再生数データを保存"""
+    def save_video_light_data(self, data: VideoLightRawData):
+        """動画の基本情報を保存"""
         query = """
-            INSERT INTO video_play_stat_raw_data (
-                video_id, url, account_username, count_text, count, crawled_at
-            ) VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO video_light_raw_data (
+                video_id, video_url, video_thumbnail_url, video_title,
+                play_count_text, like_count_text, video_alt_info_text,
+                crawling_algorithm, crawled_at
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s
+            ) ON DUPLICATE KEY UPDATE
+                video_url = VALUES(video_url),
+                video_thumbnail_url = VALUES(video_thumbnail_url),
+                video_title = VALUES(video_title),
+                play_count_text = VALUES(play_count_text),
+                like_count_text = VALUES(like_count_text),
+                video_alt_info_text = VALUES(video_alt_info_text),
+                crawling_algorithm = VALUES(crawling_algorithm),
+                crawled_at = VALUES(crawled_at)
         """
         self.db.execute_query(query, (
-            stats.video_id, stats.url, stats.account_username,
-            stats.count_text, stats.count, stats.crawled_at
-        ))
-
-    def save_video_like_stats(self, stats: VideoLikeStatRawData):
-        """動画のいいね数データを保存"""
-        query = """
-            INSERT INTO video_like_stat_raw_data (
-                video_id, url, account_username, count_text, count, crawled_at
-            ) VALUES (%s, %s, %s, %s, %s, %s)
-        """
-        self.db.execute_query(query, (
-            stats.video_id, stats.url, stats.account_username,
-            stats.count_text, stats.count, stats.crawled_at
+            data.video_id, data.video_url, data.video_thumbnail_url, data.video_title,
+            data.play_count_text, data.like_count_text, data.video_alt_info_text,
+            data.crawling_algorithm, data.crawled_at
         ))
 
     def get_existing_video_ids(self) -> Set[str]:
         """既存の動画IDを取得"""
-        query = "SELECT video_id FROM video_desc_raw_data"
+        query = "SELECT video_id FROM video_heavy_raw_data UNION SELECT video_id FROM video_light_raw_data"
         cursor = self.db.execute_query(query)
         rows = cursor.fetchall()
         cursor.close()

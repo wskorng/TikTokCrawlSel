@@ -141,10 +141,10 @@ class TikTokCrawler:
             logger.error(f"ユーザー {username} のページへの移動に失敗: {e}")
             return False
 
-    def get_like_stats_from_user_page(self, max_videos: int = 50) -> List[Dict[str, str]]:
+    def get_video_light_like_datas(self, max_videos: int = 50) -> List[Dict[str, str]]:
         video_stats = []
         try:
-            logger.debug(f"いいね数の取得を開始（最大{max_videos}件）")
+            logger.debug(f"動画のいいね数情報の取得を開始（最大{max_videos}件）")
             # 動画要素を取得
             video_elements = self.wait.until(
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[data-e2e='user-post-item']"))
@@ -156,13 +156,29 @@ class TikTokCrawler:
                     # 動画の基本情報を取得
                     video_link = video_element.find_element(By.TAG_NAME, "a")
                     video_url = video_link.get_attribute("href")
+                    video_id = video_url.split("/")[-1]
+                    
+                    # サムネイル画像を取得
+                    thumbnail_element = video_element.find_element(By.CSS_SELECTOR, "img")
+                    thumbnail_url = thumbnail_element.get_attribute("src")
                     
                     # いいね数を取得（表示形式のまま）
-                    like_count_element = video_element.find_element(By.CSS_SELECTOR, "[data-e2e='video-views']") # video-viewsといいながらいいね数なんだよな
+                    like_count_element = video_element.find_element(By.CSS_SELECTOR, "[data-e2e='video-views']") # video-viewsといいながらいいね数
                     like_count_text = like_count_element.text
                     
-                    video_stats.append({"url": video_url, "count_text": like_count_text})
-                    logger.debug(f"いいね数を取得: {video_url} -> {like_count_text}")
+                    # 動画タイトルを取得
+                    title_element = video_element.find_element(By.CSS_SELECTOR, "div[class*='DivVideoTitle']")
+                    video_title = title_element.get_attribute("innerText")
+                    
+                    video_stats.append({
+                        "video_id": video_id,
+                        "video_url": video_url,
+                        "video_thumbnail_url": thumbnail_url,
+                        "video_title": video_title,
+                        "like_count_text": like_count_text,
+                        "crawling_algorithm": "selenium-human-like-1"
+                    })
+                    logger.debug(f"動画のいいね数情報を取得: {video_id} -> {like_count_text}")
                     
                 except NoSuchElementException as e:
                     logger.warning(f"動画情報の取得に失敗: {e}")
@@ -172,7 +188,7 @@ class TikTokCrawler:
             
         except Exception as e:
             logger.error(f"動画一覧の取得に失敗: {e}")
-            return {}
+            return []
 
     def save_video_like_stats(self, like_stats: List[Dict[str, str]]):
         """動画のいいね数データを保存"""
@@ -222,8 +238,8 @@ class TikTokCrawler:
             logger.error(f"動画ページへの移動に失敗: {e}")
             return False
 
-    def get_desc_from_video_page(self) -> Optional[Dict]:
-        logger.debug(f"動画説明の取得を開始")
+    def get_video_heavy_data(self) -> Optional[Dict]:
+        logger.debug(f"動画の詳細情報の取得を開始")
         try:
             # アカウント情報を取得
             account_username = self.driver.find_element(
@@ -242,42 +258,114 @@ class TikTokCrawler:
             logger.debug(f"動画タイトルを取得: {title}")
             
             # 投稿日時を取得
-            posted_at_text = self.driver.find_element(
+            post_time_text = self.driver.find_element(
                 By.CSS_SELECTOR, "[data-e2e='browser-nickname'] span:last-child"
             ).text
-            logger.debug(f"投稿日時を取得: {posted_at_text}")
+            logger.debug(f"投稿日時を取得: {post_time_text}")
+            
+            # 音声情報を取得
+            audio_title = self.driver.find_element(
+                By.CSS_SELECTOR, "[data-e2e='browse-music-title']"
+            ).text
+            logger.debug(f"音声タイトルを取得: {audio_title}")
+            
+            # 再生数を取得
+            play_count = self.driver.find_element(
+                By.CSS_SELECTOR, "strong[data-e2e='video-views']"
+            ).text
+            logger.debug(f"再生数を取得: {play_count}")
+            
+            # いいね数を取得
+            like_count = self.driver.find_element(
+                By.CSS_SELECTOR, "strong[data-e2e='like-count']"
+            ).text
+            logger.debug(f"いいね数を取得: {like_count}")
+            
+            current_url = self.driver.current_url
+            video_id = current_url.split("/")[-1]
             
             return {
-                "title": title,
-                "posted_at_text": posted_at_text,
-                "account_username": account_username,
-                "account_nickname": account_nickname,
-                "url": self.driver.current_url,
-                "video_id": self.driver.current_url.split("/")[-1]
+                "video_id": video_id,
+                "video_url": current_url,
+                "video_title": title,
+                "creator_nickname": account_nickname,
+                "creator_unique_id": account_username,
+                "post_time_text": post_time_text,
+                "audio_title": audio_title,
+                "play_count_text": play_count,
+                "like_count_text": like_count,
+                "crawling_algorithm": "selenium-human-like-1"
             }
 
         except Exception as e:
-            logger.error(f"動画説明の取得に失敗: {e}")
+            logger.error(f"動画の詳細情報の取得に失敗: {e}")
             return None
 
-    def save_video_desc(self, desc_data: Dict):
-        """動画の説明データを保存"""
+    def save_video_heavy_data(self, heavy_data: Dict) -> bool:
+        """動画の詳細情報を保存"""
         try:
-            desc = VideoDescRawData(
-                id=None,
-                video_id=desc_data["video_id"],
-                url=desc_data["url"],
-                account_username=desc_data["account_username"],
-                account_nickname=desc_data["account_nickname"],
-                title=desc_data["title"],
-                posted_at_text=desc_data["posted_at_text"],
-                posted_at=None,  # TODO: posted_at_textのパース処理を実装
-                crawled_at=datetime.now()
-            )
-            self.video_repo.save_video_description(desc)
+            # post_time_textのパース処理は今後実装
+            data = {
+                "id": None,
+                "video_id": heavy_data["video_id"],
+                "video_url": heavy_data["video_url"],
+                "video_title": heavy_data["video_title"],
+                "creator_nickname": heavy_data["creator_nickname"],
+                "creator_unique_id": heavy_data["creator_unique_id"],
+                "post_time_text": heavy_data["post_time_text"],
+                "post_time": None,  # TODO: post_time_textのパース処理を実装
+                "audio_title": heavy_data["audio_title"],
+                "play_count_text": heavy_data["play_count_text"],
+                "like_count_text": heavy_data["like_count_text"],
+                "crawling_algorithm": heavy_data["crawling_algorithm"],
+                "crawled_at": datetime.now()
+            }
+            
+            self.video_repo.save_video_heavy_data(data)
+            logger.info(f"動画の詳細情報を保存: {heavy_data['video_id']}")
             return True
+            
         except Exception as e:
-            logger.error(f"動画説明の保存に失敗: {e}")
+            logger.error(f"動画の詳細情報の保存に失敗: {e}")
+            return False
+
+    def save_video_light_datas(self, light_like_datas: List[Dict], light_play_datas: List[Dict]) -> bool:
+        """動画の基本情報を保存"""
+        try:
+            # light_like_datasとlight_play_datasをvideo_idをキーにマージ
+            video_data_map = {}
+            
+            # いいね数データを処理
+            for like_data in light_like_datas:
+                video_id = like_data["video_id"]
+                video_data_map[video_id] = {
+                    "id": None,
+                    "video_id": video_id,
+                    "video_url": like_data["video_url"],
+                    "video_thumbnail_url": like_data["video_thumbnail_url"],
+                    "video_title": like_data["video_title"],
+                    "like_count_text": like_data["like_count_text"],
+                    "play_count_text": None,
+                    "video_alt_info_text": "",  # TODO: 後で生成
+                    "crawling_algorithm": like_data["crawling_algorithm"],
+                    "crawled_at": datetime.now()
+                }
+            
+            # 再生数データを処理
+            for play_data in light_play_datas:
+                video_id = play_data["video_id"]
+                if video_id in video_data_map:
+                    video_data_map[video_id]["play_count_text"] = play_data["play_count_text"]
+            
+            # データベースに保存
+            for video_data in video_data_map.values():
+                self.video_repo.save_video_light_data(video_data)
+                logger.info(f"動画の基本情報を保存: {video_data['video_id']}")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"動画の基本情報の保存に失敗: {e}")
             return False
     
     def navigate_to_video_page_creator_videos_tab(self) -> bool:
@@ -295,10 +383,10 @@ class TikTokCrawler:
             logger.error(f"動画ページの「クリエイターの動画」タブへの移動に失敗: {e}")
             return False
 
-    def get_play_stats_from_video_page_creator_videos_tab(self, max_videos: int = 30) -> List[Dict[str, str]]: #これタブ開かなくていいんじゃね
+    def get_video_light_play_datas(self, max_videos: int = 30) -> List[Dict[str, str]]:
         video_stats = []
         try:
-            logger.debug(f"再生数の取得を開始（最大{max_videos}件）")
+            logger.debug(f"動画の再生数情報の取得を開始（最大{max_videos}件）")
             # 動画要素を取得
             video_elements = self.wait.until(
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[data-e2e='user-post-item']"))
@@ -310,13 +398,29 @@ class TikTokCrawler:
                     # 動画の基本情報を取得
                     video_link = video_element.find_element(By.TAG_NAME, "a")
                     video_url = video_link.get_attribute("href")
+                    video_id = video_url.split("/")[-1]
+                    
+                    # サムネイル画像を取得
+                    thumbnail_element = video_element.find_element(By.CSS_SELECTOR, "img")
+                    thumbnail_url = thumbnail_element.get_attribute("src")
                     
                     # 再生数を取得（表示形式のまま）
                     play_count_element = video_element.find_element(By.CSS_SELECTOR, "strong[data-e2e='video-views'][class*='StrongVideoCount']")
-                    play_count_text = play_count_element.get_attribute("innerText") # ただの.textじゃ取れない
+                    play_count_text = play_count_element.get_attribute("innerText")
                     
-                    video_stats.append({"url": video_url, "count_text": play_count_text})
-                    logger.debug(f"再生数を取得: {video_url} -> {play_count_text}")
+                    # 動画タイトルを取得
+                    title_element = video_element.find_element(By.CSS_SELECTOR, "div[class*='DivVideoTitle']")
+                    video_title = title_element.get_attribute("innerText")
+                    
+                    video_stats.append({
+                        "video_id": video_id,
+                        "video_url": video_url,
+                        "video_thumbnail_url": thumbnail_url,
+                        "video_title": video_title,
+                        "play_count_text": play_count_text,
+                        "crawling_algorithm": "selenium-human-like-1"
+                    })
+                    logger.debug(f"動画の再生数情報を取得: {video_id} -> {play_count_text}")
                     
                 except NoSuchElementException as e:
                     logger.warning(f"動画情報の取得に失敗: {e}")
@@ -326,7 +430,7 @@ class TikTokCrawler:
             
         except Exception as e:
             logger.error(f"動画一覧の取得に失敗: {e}")
-            return {}
+            return []
 
     def save_video_play_stats(self, play_stats: List[Dict[str, str]]):
         """動画の再生数データを保存"""
@@ -397,27 +501,28 @@ class TikTokCrawler:
                     if not self.navigate_to_user_page(account.favorite_account_username):
                         continue
                     self.scroll_page(3)
-                    video_like_stats = self.get_like_stats_from_user_page(max_videos_per_account)
-                    if not video_like_stats:
+                    light_like_datas = self.get_video_light_like_datas(max_videos_per_account)
+                    if not light_like_datas:
                         continue
-                    self.save_video_like_stats(video_like_stats)
 
                     # 動画ページに移動
-                    first_url = video_like_stats[0][0]
+                    first_url = light_like_datas[0]["video_url"]
                     if not self.navigate_to_video_page(first_url):
                         continue
-                    video_desc = self.get_desc_from_video_page()
-                    if not video_desc:
+                    heavy_data = self.get_video_heavy_data()
+                    if not heavy_data:
                         continue
-                    self.save_video_desc(video_desc)
+                    self.save_video_heavy_data(heavy_data)
 
                     if not self.navigate_to_video_page_creator_videos_tab():
                         continue
                     self.scroll_page(3)
-                    video_play_stats = self.get_play_stats_from_video_page_creator_videos_tab(max_videos_per_account)
-                    if not video_play_stats:
+                    light_play_datas = self.get_video_light_play_datas(max_videos_per_account)
+                    if not light_play_datas:
                         continue
-                    self.save_video_play_stats(video_play_stats)
+                    
+                    # 動画の基本情報を保存
+                    self.save_video_light_datas(light_like_datas, light_play_datas)
 
                     # アカウントの最終クロール時間を更新
                     self.favorite_account_repo.update_favorite_account_last_crawled(

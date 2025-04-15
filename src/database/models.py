@@ -21,33 +21,42 @@ class FavoriteAccount:
     last_crawled_at: Optional[datetime] # 初めてかもしれないので
 
 @dataclass
-class VideoDescRawData:
-    id: int  # 自動採番
-    video_id: str  # TikTokの動画IDそのまま
-    url: str
-    account_username: str
-    account_nickname: str
-    title: str
-    posted_at_text: str
-    posted_at: Optional[datetime] # パースできないかもしれないので
-    crawled_at: datetime
+class VideoHeavyRawData:
+    id: Optional[int] = None  # 自動採番
+    video_id: str = ""  # TikTokの動画IDそのまま
+    video_url: str = ""
+    video_thumbnail_url: str = ""
+    video_title: str = ""
+    creator_nickname: str = ""
+    creator_unique_id: str = ""
+    post_time_text: str = ""
+    post_time: Optional[datetime] = None  # パースできないかもしれない
+    audio_info_text: Optional[str] = None
+    audio_id: Optional[str] = None
+    audio_title: Optional[str] = None
+    audio_author_name: Optional[str] = None
+    play_count_text: str = ""
+    play_count: Optional[int] = None
+    like_count_text: str = ""
+    like_count: Optional[int] = None
+    comment_count_text: Optional[str] = None
+    comment_count: Optional[int] = None
+    collect_count_text: Optional[str] = None
+    collect_count: Optional[int] = None
+    share_count_text: Optional[str] = None
+    share_count: Optional[int] = None
+    crawling_algorithm: str = ""
+    crawled_at: datetime = datetime.now()
 
 @dataclass
-class VideoPlayStatRawData:
-    id: int # 自動採番
-    video_id: str
-    url: str
-    account_username: str
-    count_text: str # 表示形式のままの再生数
-    count: Optional[int] # パース後の数値
-    crawled_at: datetime
-
-@dataclass
-class VideoLikeStatRawData:
-    id: int # 自動採番
-    video_id: str
-    url: str
-    account_username: str
-    count_text: str # 表示形式のままのいいね数
-    count: Optional[int] # パース後の数値
-    crawled_at: datetime
+class VideoLightRawData:
+    id: Optional[int] = None  # 自動採番
+    video_id: str = ""  # TikTokの動画IDそのまま
+    video_url: str = ""
+    video_thumbnail_url: str = ""
+    video_title: str = ""
+    play_count_text: Optional[str] = None
+    like_count_text: Optional[str] = None
+    video_alt_info_text: str = ""  # {audio_author_name}の{audio_title}を使用して{creator_nickname}が作成した{video_title}
+    crawling_algorithm: str = ""
+    crawled_at: datetime = datetime.now()
