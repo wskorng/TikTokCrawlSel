@@ -450,37 +450,41 @@ class TikTokCrawler:
             return False
 
     def parse_and_save_video_light_datas(self, light_like_datas: List[Dict], light_play_datas: List[Dict]) -> bool:
-        """動画の基本情報を保存"""
         try:
-            # light_like_datasとlight_play_datasをvideo_idをキーにマージ
-            video_data_map = {}
+            # サムネイルURLをキーに、再生数をマッピング
+            play_count_map = {}
+            for play_data in light_play_datas:
+                play_count_map[play_data["video_thumbnail_url"]] = play_data["play_count_text"]
             
-            # いいね数データを処理
+            # いいね数データを処理し、再生数を追加
             for like_data in light_like_datas:
-                video_id = like_data["video_id"]
-                video_data_map[video_id] = {
+                play_count_text = play_count_map.get(like_data["video_thumbnail_url"])
+                
+                # video_urlからvideo_idとaccount_usernameを抽出
+                # 例: https://www.tiktok.com/@username/video/1234567890
+                url_parts = like_data["video_url"].split("/")
+                video_id = url_parts[-1]
+                account_username = url_parts[-3].replace("@", "")
+                if "?" in video_id:
+                    video_id = video_id.split("?")[0]
+
+                data = {
                     "id": None,
-                    "video_id": video_id,
                     "video_url": like_data["video_url"],
+                    "video_id": video_id,
+                    "account_username": account_username,
                     "video_thumbnail_url": like_data["video_thumbnail_url"],
-                    "video_title": like_data["video_title"],
+                    "video_alt_info_text": like_data["video_alt_info_text"],
                     "like_count_text": like_data["like_count_text"],
-                    "play_count_text": None,
-                    "video_alt_info_text": "",  # TODO: 後で生成
+                    "like_count": parse_tiktok_number(like_data["like_count_text"]),
+                    "play_count_text": play_count_text,
+                    "play_count": parse_tiktok_number(play_count_text),
                     "crawling_algorithm": like_data["crawling_algorithm"],
                     "crawled_at": datetime.now()
                 }
-            
-            # 再生数データを処理
-            for play_data in light_play_datas:
-                video_id = play_data["video_id"]
-                if video_id in video_data_map:
-                    video_data_map[video_id]["play_count_text"] = play_data["play_count_text"]
-            
-            # データベースに保存
-            for video_data in video_data_map.values():
-                self.video_repo.save_video_light_data(video_data)
-                logger.info(f"動画の基本情報を保存: {video_data['video_id']}")
+
+                self.video_repo.save_video_light_data(data)
+                logger.info(f"動画の基本情報を保存: {data['video_id']}")
             
             return True
             
