@@ -48,14 +48,83 @@ def insert_favorite_accounts(db: Database, crawler_account_id: int):
             "priority": 100
         },
         {
-            "username": "kana.sii.i",  # のミントグリーン
-            "priority": 90
+            "username": "kana.sii.i",  # 板倉可奈
+            "priority": 100
         },
         {
-            "username": "m_ayano26",  # の青
-            "priority": 80
+            "username": "bayashi.tiktok",  # バヤシ（Bayashi）
+            "priority": 100
+        },
+        {
+            "username": "junya1gou",  # じゅんや（Junya）
+            "priority": 100
+        },
+        {
+            "username": "kageihina",  # 景井ひな
+            "priority": 100
+        },
+        {
+            "username": "0906yu_rin",  # ゆーり(21)yuri
+            "priority": 100
+        },
+        {
+            "username": "michaeljackton.official",  # マイケルジャクトン
+            "priority": 100
+        },
+        {
+            "username": "fukada0318",  # 深田えいみ
+            "priority": 100
+        },
+        {
+            "username": "o_jas514",  # おじゃす（Ojas）
+            "priority": 100
+        },
+        {
+            "username": "naenano",  # なえなの
+            "priority": 100
+        },
+        {
+            "username": "unpai3",  # うんぱい
+            "priority": 100
+        },
+        {
+            "username": "uchiyamasan",  # 内山さん（Uchiyamasan）
+            "priority": 100
+        },
+        {
+            "username": "buzzmagicianshin",  # Buzz Magician Shin
+            "priority": 100
+        },
+        {
+            "username": "exrikariko",  # りかりこ
+            "priority": 100
+        },
+        {
+            "username": "_lisa1431_",  # 渡辺リサ
+            "priority": 100
+        },
+        {
+            "username": "maikichi0130",  # まいきち
+            "priority": 100
+        },
+        {
+            "username": "chamitan_09082424",  # 古川優奈（ゆうちゃみ）
+            "priority": 100
+        },
+        {
+            "username": "123987443",  # Marina
+            "priority": 100
+        },
+        {
+            "username": "83743927",  # 西村歩乃果
+            "priority": 100
+        },
+        {
+            "username": "kiritampo",  # きりたんぽ
+            "priority": 100
         }
     ]
+
     
     for account in accounts:
         query = """
