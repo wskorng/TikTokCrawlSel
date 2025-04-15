@@ -600,7 +600,7 @@ class TikTokCrawler:
 
 
     def crawl_favorite_users_light(self, max_videos_per_user: int = 100, max_users: int = 10):
-        logger.info(f"クロール対象のお気に入りアカウント{max_users}件に対し軽いデータのクロールを行います")
+        logger.info(f"クロール対象のお気に入りユーザー{max_users}件に対し軽いデータのクロールを行います")
         favorite_users = self.favorite_user_repo.get_favorite_users(
             self.crawler_account.id,
             limit=max_users
@@ -613,7 +613,7 @@ class TikTokCrawler:
                 logger.exception(f"ユーザー @{user.favorite_user_username} の軽いデータのクロール中に失敗")
                 continue
             
-        logger.info(f"クロール対象のお気に入りアカウント{len(favorite_users)}件に対し軽いデータのクロールを完了しました")
+        logger.info(f"クロール対象のお気に入りユーザー{len(favorite_users)}件に対し軽いデータのクロールを完了しました")
 
 
     def crawl_user_heavy(self, user: FavoriteUser, max_videos: int = 100):
@@ -646,8 +646,8 @@ class TikTokCrawler:
         logger.info(f"ユーザー @{user.favorite_user_username} の重いデータのクロールを完了しました")
 
 
-    def crawl_favorite_users_heavy(self, max_videos_per_user: int = 10, max_users: int = 10):
-        logger.info(f"クロール対象のお気に入りアカウント{max_users}件に対し重いデータのクロールを行います")
+    def crawl_favorite_users_heavy(self, max_videos_per_user: int = 100, max_users: int = 10):
+        logger.info(f"クロール対象のお気に入りユーザー{max_users}件に対し重いデータのクロールを行います")
         favorite_users = self.favorite_user_repo.get_favorite_users(
             self.crawler_account.id,
             limit=max_users
@@ -660,7 +660,7 @@ class TikTokCrawler:
                 logger.exception(f"ユーザー @{user.favorite_user_username} の重いデータのクロール中に失敗。継続します")
                 continue
         
-        logger.info(f"クロール対象のお気に入りアカウント{len(favorite_users)}件に対し重いデータのクロールを完了しました")
+        logger.info(f"クロール対象のお気に入りユーザー{len(favorite_users)}件に対し重いデータのクロールを完了しました")
     
 
 
@@ -685,14 +685,14 @@ def main():
     parser.add_argument(
         "--max-videos-per-user",
         type=int,
-        default=50,
-        help="1アカウントあたりの最大取得動画数（デフォルト: 50）"
+        default=100,
+        help="1ユーザーあたりの最大取得動画数（デフォルト: 100）"
     )
     parser.add_argument(
         "--max-users",
         type=int,
         default=10,
-        help="クロール対象の最大アカウント数（デフォルト: 10）"
+        help="クロール対象の最大ユーザー数（デフォルト: 10）"
     )
     
     args = parser.parse_args()

@@ -1,5 +1,4 @@
-import mysql.connector
-from mysql.connector import Error
+from .database import Database
 from ..config import DB_CONFIG
 from ..logger import setup_logger
 
