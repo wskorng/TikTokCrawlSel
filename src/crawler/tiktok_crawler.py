@@ -18,6 +18,105 @@ from ..logger import setup_logger
 
 logger = setup_logger(__name__)
 
+
+def parse_tiktok_time(time_text: str, base_time: datetime) -> Optional[datetime]:
+    """投稿時間のテキストを解析する
+    
+    Args:
+        time_text: 解析する時間文字列 (e.g. "3-25", "1日前", "2時間前")
+        base_time: 基準となる時刻
+    
+    Returns:
+        解析結果の日時。解析できない場合はNone。
+    """
+    if not time_text:
+        return None
+
+    try:
+        # 「分前」の場合
+        if time_text.endswith("分前"):
+            minutes = int(time_text.replace("分前", ""))
+            return base_time - timedelta(minutes=minutes)
+
+        # 「時間前」の場合
+        if time_text.endswith("時間前"):
+            hours = int(time_text.replace("時間前", ""))
+            return base_time - timedelta(hours=hours)
+
+        # 「日前」の場合
+        if time_text.endswith("日前"):
+            days = int(time_text.replace("日前", ""))
+            return base_time - timedelta(days=days)
+
+        # 「M-D」形式の場合
+        if "-" in time_text and len(time_text.split("-")) == 2:
+            month, day = map(int, time_text.split("-"))
+            year = base_time.year
+            # 月が現在より大きい場合は前年と判断
+            if month > base_time.month:
+                year -= 1
+            return datetime(year, month, day,
+                          base_time.hour, base_time.minute,
+                          tzinfo=base_time.tzinfo)
+
+        # 「YYYY-MM-DD」形式の場合
+        if "-" in time_text and len(time_text.split("-")) == 3:
+            year, month, day = map(int, time_text.split("-"))
+            return datetime(year, month, day,
+                          base_time.hour, base_time.minute,
+                          tzinfo=base_time.tzinfo)
+
+        return None
+
+    except:
+        return None
+
+
+def parse_tiktok_number(text: str) -> Optional[int]:
+    """TikTok形式の数値文字列を解析する
+    
+    Args:
+        text: 解析する文字列 (e.g. "1,234", "1.5K", "3.78M")
+    
+    Returns:
+        解析結果の整数値。解析できない場合はNone。
+        "1,234" -> 1234
+        "1.5K" -> 1500
+        "3.78M" -> 3780000
+    """
+    if not text:
+        return None
+
+    try:
+        # カンマを削除
+        text = text.replace(",", "")
+
+        # 単位がない場合はそのまま整数変換
+        if text.replace(".", "").isdigit():
+            return int(float(text))
+
+        # 単位ごとの倍率
+        multipliers = {
+            "K": 1000,       # 千
+            "M": 1000000,    # 百万
+            "G": 1000000000, # 十億
+            "B": 1000000000  # 十億
+        }
+
+        # 最後の文字を単位として取得
+        unit = text[-1].upper()
+        if unit in multipliers:
+            # 数値部分を取得して浮動小数点に変換
+            number = float(text[:-1])
+            # 倍率をかけて整数化
+            return int(number * multipliers[unit])
+        
+        return None
+
+    except:
+        return None
+
+
 class TikTokCrawler:
     BASE_URL = "https://www.tiktok.com"
     
@@ -294,7 +393,7 @@ class TikTokCrawler:
             logger.error(f"動画一覧の取得に失敗: {e}")
             return []
 
-    def save_video_heavy_data(self, heavy_data: Dict, thumbnail_url: str) -> bool:
+    def parse_and_save_video_heavy_data(self, heavy_data: Dict, thumbnail_url: str) -> bool:
         try:
             # URLからvideo_idを抽出
             video_id = heavy_data["video_url"].split("/")[-1]
@@ -306,20 +405,12 @@ class TikTokCrawler:
             audio_author_name = None
             if heavy_data.get("audio_info_text"):
                 parts = heavy_data["audio_info_text"].split(" - ")
-                if len(parts) == 2:
-                    audio_title = parts[0]
-                    audio_author_name = parts[1]
+                if len(parts) >= 2:
+                    # 最後の部分をaudio_author_nameとし、それ以外を全てaudio_titleとする
+                    audio_author_name = parts[-1]
+                    audio_title = " - ".join(parts[:-1])
 
-            # テキスト形式の数値から整数を抽出
-            def extract_number(text: str) -> int:
-                if not text:
-                    return None
-                try:
-                    # 数字以外の文字を削除
-                    num = ''.join(filter(str.isdigit, text))
-                    return int(num) if num else None
-                except:
-                    return None
+            post_time = parse_tiktok_time(heavy_data.get("post_time_text"), datetime.now())
 
             data = {
                 "id": None,  # 自動採番
@@ -330,22 +421,22 @@ class TikTokCrawler:
                 "video_thumbnail_url": thumbnail_url,
                 "video_title": heavy_data["video_title"],
                 "post_time_text": heavy_data.get("post_time_text"),
-                "post_time": None,  # TODO: post_time_textのパース処理を実装
+                "post_time": post_time,
                 "audio_url": heavy_data.get("audio_url"),
                 "audio_info_text": heavy_data.get("audio_info_text"),
-                "audio_id": None,  # 現在は取得できない
+                "audio_id": None,  # ここでは取得できない
                 "audio_title": audio_title,
                 "audio_author_name": audio_author_name,
-                "play_count_text": None,  # 現在は取得できない
-                "play_count": None,  # 現在は取得できない
+                "play_count_text": None,  # ここでは取得できない
+                "play_count": None,  # ここでは取得できない
                 "like_count_text": heavy_data.get("like_count_text"),
-                "like_count": extract_number(heavy_data.get("like_count_text")),
+                "like_count": parse_tiktok_number(heavy_data.get("like_count_text")),
                 "comment_count_text": heavy_data.get("comment_count_text"),
-                "comment_count": extract_number(heavy_data.get("comment_count_text")),
+                "comment_count": parse_tiktok_number(heavy_data.get("comment_count_text")),
                 "collect_count_text": heavy_data.get("collection_count_text"),
-                "collect_count": extract_number(heavy_data.get("collection_count_text")),
+                "collect_count": parse_tiktok_number(heavy_data.get("collection_count_text")),
                 "share_count_text": heavy_data.get("share_count_text"),
-                "share_count": extract_number(heavy_data.get("share_count_text")),
+                "share_count": parse_tiktok_number(heavy_data.get("share_count_text")),
                 "crawled_at": datetime.now(),
                 "crawling_algorithm": heavy_data["crawling_algorithm"]
             }
@@ -358,7 +449,7 @@ class TikTokCrawler:
             logger.error(f"動画の詳細情報の保存に失敗: {e}")
             return False
 
-    def save_video_light_datas(self, light_like_datas: List[Dict], light_play_datas: List[Dict]) -> bool:
+    def parse_and_save_video_light_datas(self, light_like_datas: List[Dict], light_play_datas: List[Dict]) -> bool:
         """動画の基本情報を保存"""
         try:
             # light_like_datasとlight_play_datasをvideo_idをキーにマージ
@@ -436,7 +527,7 @@ class TikTokCrawler:
                     heavy_data = self.get_video_heavy_data_from_video_page()
                     if not heavy_data:
                         continue
-                    self.save_video_heavy_data(heavy_data)
+                    self.parse_and_save_video_heavy_data(heavy_data)
 
                     if not self.navigate_to_video_page_creator_videos_tab():
                         continue
@@ -446,7 +537,7 @@ class TikTokCrawler:
                         continue
                     
                     # 動画の基本情報を保存
-                    self.save_video_light_datas(light_like_datas, light_play_datas)
+                    self.parse_and_save_video_light_datas(light_like_datas, light_play_datas)
 
                     # アカウントの最終クロール時間を更新
                     self.favorite_account_repo.update_favorite_account_last_crawled(
