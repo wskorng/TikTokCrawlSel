@@ -15,11 +15,10 @@ def clear_all_data():
         
         # 各テーブルを空にする
         tables = [
-            "video_desc_raw_data",
-            "video_play_stat_raw_data",
-            "video_like_stat_raw_data",
-            "favorite_accounts",
             "crawler_accounts"
+            "favorite_accounts",
+            "video_heavy_raw_data",
+            "video_light_raw_data",
         ]
         
         for table in tables:
