@@ -197,7 +197,7 @@ class TikTokCrawler:
         # Seleniumの設定
         self.selenium_manager = SeleniumManager(self.crawler_account.proxy)
         self.driver = self.selenium_manager.setup_driver()
-        self.wait = WebDriverWait(self.driver, 60)  # タイムアウトを60秒に変更
+        self.wait = WebDriverWait(self.driver, 10)  # タイムアウトを10秒に変更
 
         # ログイン
         self._login()
@@ -309,17 +309,30 @@ class TikTokCrawler:
         self.driver.get(f"{self.BASE_URL}/@{username}")
         self._random_sleep(2.0, 4.0)
 
-        # まずページのタイトルを確認
-        title = self.driver.title
-        if title.startswith("このアカウントは見つかりませんでした。"):
-            logger.warning(f"ユーザー @{username} は存在しません。データベースのis_aliveをFalseに更新します。")
-            self.favorite_user_repo.update_favorite_user_is_alive(username, False)
-            raise self.UserNotFoundException(f"ユーザー @{username} は存在しません")
+        # user-page要素の存在を待機
+        self.wait.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "[data-e2e='user-page']"))
+        )
+
+        try:
+            self.wait.until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "[data-e2e='user-post-item']"))
+            )
+        
+        except TimeoutException:
+            logger.debug("user-pageが見つかったにも関わらずuser-post-itemが見つかりません。ユーザーが削除されている可能性があるので調査します。")
+            a = self.wait.until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "p.css-emuynwa1"))
+            )
+            if a.text == "このアカウントは見つかりませんでした":
+                logger.warning(f"ユーザー @{username} は削除されたようです。データベースのis_aliveをFalseに更新します。")
+                self.favorite_user_repo.update_favorite_user_is_alive(username, False)
+                raise self.UserNotFoundException(f"ユーザー @{username} は存在しません")
+            else:
+                logger.exception(f"emuynwa1が出てるのでユーザーが削除されてそうなんだけど、textが違う: {a.text}")
+                raise
         
         # ユーザーページの読み込みを確認
-        self.wait.until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "[data-e2e='user-post-item']"))
-        )
         logger.debug(f"ユーザー @{username} のページに移動しました")
             
 
@@ -737,7 +750,7 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        logger.info("ユーザーによりクロールが中断されました")
+        logger.info("ユーザーにより中断されました")
         sys.exit(130)  # 128 + SIGINT(2)
     except Exception:
         logger.exception("予期しないエラーが発生しました")
