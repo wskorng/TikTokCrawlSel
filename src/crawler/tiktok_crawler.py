@@ -163,29 +163,32 @@ class TikTokCrawler:
     
     def __init__(self, crawler_account_repo: CrawlerAccountRepository,
                  favorite_user_repo: FavoriteUserRepository,
-                 video_repo: VideoRepository):
+                 video_repo: VideoRepository,
+                 crawler_account_id: Optional[int] = None):
         """
         TikTokクローラーの初期化
         
         Args:
             crawler_account_repo: クローラーアカウントリポジトリ
-            favorite_user_repo: お気に入りアカウントリポジトリ
+            favorite_user_repo: お気に入りユーザーリポジトリ
             video_repo: 動画リポジトリ
+            crawler_account_id: 使用するクローラーアカウントのID（Noneの場合は自動選択）
         """
         self.crawler_account_repo = crawler_account_repo
         self.favorite_user_repo = favorite_user_repo
         self.video_repo = video_repo
+        self.crawler_account_id = crawler_account_id
         self.crawler_account: Optional[CrawlerAccount] = None
         self.selenium_manager = None
         self.driver = None
         self.wait = None
-        
-    def start(self, crawler_account_id: Optional[int] = None): # crawler_account_id が None なら適当に持ってくる
+
+    def __enter__(self):
         # クローラーアカウントを取得
-        if crawler_account_id is not None:
-            self.crawler_account = self.crawler_account_repo.get_crawler_account_by_id(crawler_account_id)
+        if self.crawler_account_id is not None:
+            self.crawler_account = self.crawler_account_repo.get_crawler_account_by_id(self.crawler_account_id)
             if not self.crawler_account:
-                raise Exception(f"指定されたクローラーアカウント（ID: {crawler_account_id}）が見つかりません")
+                raise Exception(f"指定されたクローラーアカウント（ID: {self.crawler_account_id}）が見つかりません")
         else:
             self.crawler_account = self.crawler_account_repo.get_an_available_crawler_account()
             if not self.crawler_account:
@@ -204,8 +207,9 @@ class TikTokCrawler:
             self.crawler_account.id,
             datetime.now()
         )
+        return self
 
-    def stop(self):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         if self.selenium_manager:
             self.selenium_manager.quit_driver()
             
@@ -700,17 +704,13 @@ def main():
         favorite_user_repo = FavoriteUserRepository(db)
         video_repo = VideoRepository(db)
             
-        # クローラーの初期化
-        crawler = TikTokCrawler(
+        # クローラーの初期化と実行
+        with TikTokCrawler(
             crawler_account_repo=crawler_account_repo,
             favorite_user_repo=favorite_user_repo,
-            video_repo=video_repo
-        )
-    
-        try:
-            # クローラーを開始（Selenium初期化とログイン）
-            crawler.start(args.crawler_account_id)
-            
+            video_repo=video_repo,
+            crawler_account_id=args.crawler_account_id
+        ) as crawler:
             # モードに応じてクロール
             if args.mode in ["light", "both"]:
                 crawler.crawl_favorite_users_light(
@@ -725,14 +725,6 @@ def main():
                 )
 
             # TODO bothのとき被ってるとこ多いんで別関数で作ろう
-                  
-        except Exception:
-            logger.exception(f"クローラー起動状態でエラーが発生しました。クローラーを停止します。")
-            raise
-        
-        finally:
-            # クローラーの停止（Seleniumのクリーンアップ）
-            crawler.stop()
 
 if __name__ == "__main__":
     main()
