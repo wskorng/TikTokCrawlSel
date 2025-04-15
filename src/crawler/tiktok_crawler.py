@@ -19,6 +19,27 @@ from ..logger import setup_logger
 logger = setup_logger(__name__)
 
 
+def extract_thumbnail_essence(thumbnail_url: str) -> str:
+    """サムネイルURLから一意な識別子を抽出する
+    例: https://p19-sign.tiktokcdn-us.com/obj/tos-useast5-p-0068-tx/oMnASW5J5CYEMAiRxDhIPnOAAfE1gGfD1UiBia?lk3s=81f88b70&...
+    → oMnASW5J5CYEMAiRxDhIPnOAAfE1gGfD1UiBia
+    """
+    try:
+        path = thumbnail_url
+        if "?" in path:
+            path = path.split("?")[0]
+        file_name = path.split("/")[-1]
+        if "." in file_name:
+            file_name = file_name.split(".")[0]
+        if "~" in file_name:
+            file_name = file_name.split("~")[0]
+        
+        return file_name
+    except Exception:
+        logger.exception(f"サムネイルURLからIDの抽出に失敗: {thumbnail_url}")
+        return thumbnail_url  # 失敗した場合は元のURLを返す
+
+
 def parse_tiktok_time(time_text: str, base_time: datetime) -> Optional[datetime]:
     """投稿時間のテキストを解析する
     
@@ -532,25 +553,7 @@ class TikTokCrawler:
             logger.exception(f"動画の重いデータのパースおよび保存に失敗: {data.video_url}")
             return False
 
-    def _extract_thumbnail_essence(self, thumbnail_url: str) -> str:
-        """サムネイルURLから一意な識別子を抽出する
-        例: https://p19-sign.tiktokcdn-us.com/obj/tos-useast5-p-0068-tx/oMnASW5J5CYEMAiRxDhIPnOAAfE1gGfD1UiBia?lk3s=81f88b70&...
-        → oMnASW5J5CYEMAiRxDhIPnOAAfE1gGfD1UiBia
-        """
-        try:
-            path = thumbnail_url
-            if "?" in path:
-                path = path.split("?")[0]
-            file_name = path.split("/")[-1]
-            if "." in file_name:
-                file_name = file_name.split(".")[0]
-            if "~" in file_name:
-                file_name = file_name.split("~")[0]
-            
-            return file_name
-        except Exception:
-            logger.exception(f"サムネイルURLからIDの抽出に失敗: {thumbnail_url}")
-            return thumbnail_url  # 失敗した場合は元のURLを返す
+
 
     def parse_and_save_video_light_datas(self, light_like_datas: List[Dict], light_play_datas: List[Dict]) -> bool:
         logger.debug(f"動画の軽いデータをパースおよび保存中...")
@@ -558,13 +561,13 @@ class TikTokCrawler:
             # サムネイルURLのエッセンスをキーに、再生数をマッピング
             play_count_map = {}
             for play_data in light_play_datas:
-                thumbnail_essence = self._extract_thumbnail_essence(play_data["video_thumbnail_url"])
+                thumbnail_essence = extract_thumbnail_essence(play_data["video_thumbnail_url"])
                 play_count_map[thumbnail_essence] = play_data["play_count_text"]
             
             # いいね数データを処理し、再生数を追加
             play_count_not_found = 0
             for like_data in light_like_datas:
-                thumbnail_essence = self._extract_thumbnail_essence(like_data["video_thumbnail_url"])
+                thumbnail_essence = extract_thumbnail_essence(like_data["video_thumbnail_url"])
                 play_count_text = play_count_map.get(thumbnail_essence)
                 if not play_count_text:
                     play_count_not_found += 1
