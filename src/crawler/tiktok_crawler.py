@@ -226,8 +226,7 @@ class TikTokCrawler:
                 self._random_sleep(3.0, 4.0) # TODO ここちゃんと画像表示をwaitすればthumbnail問題治るんじゃね
                 
         except Exception:
-            logger.exception(f"ページのスクロールに失敗")
-            raise
+            logger.warning(f"ページのスクロールに失敗")
     
     def scroll_element(self, element_selector: str, scroll_count: int = 3):
         """特定の要素内をスクロールする"""
@@ -262,8 +261,7 @@ class TikTokCrawler:
                     break
                     
         except Exception:
-            logger.exception(f"要素のスクロールに失敗: {element_selector}")
-            raise
+            logger.warning(f"要素のスクロールに失敗: {element_selector}")
 
     def _login(self): # TikTokにログインする
         logger.info(f"クロール用アカウント{self.crawler_account.username}でTikTokにログイン中...")
@@ -587,7 +585,7 @@ class TikTokCrawler:
             # logger.debug(f"動画の軽いデータを保存します: {data.video_id} -> {data.play_count}, {data.like_count}")
             self.video_repo.save_video_light_data(data)
             
-            logger.info(f"動画の軽いデータをパースおよび保存しました: {len(data)}件、うちplay_count_textが取れなかったもの: {play_count_not_found}件")
+        logger.info(f"動画の軽いデータをパースおよび保存しました: {len(light_like_datas)}件、うちplay_count_textが取れなかったもの: {play_count_not_found}件")
 
 
     def crawl_user_light(self, user: FavoriteUser, max_videos: int = 100):
@@ -605,6 +603,7 @@ class TikTokCrawler:
 
         first_url = light_like_datas[0]["video_url"]
         self.navigate_to_video_page(first_url)
+        self.navigate_to_video_page_creator_videos_tab()
         light_play_datas = self.get_video_light_play_datas_from_video_page_creator_videos_tab(max_videos+12) # ピン留めとかphoto投稿の影響でちゃんと一対一対応してるか怪しいんでね
         
         self.parse_and_save_video_light_datas(light_like_datas, light_play_datas)
@@ -635,13 +634,17 @@ class TikTokCrawler:
         logger.info(f"クロール対象のお気に入りユーザー{len(favorite_users)}件に対し軽いデータのクロールを完了しました")
 
 
-    def crawl_user_heavy(self, user: FavoriteUser, max_videos: int = 100):
+    def crawl_user_heavy(self, user: FavoriteUser, max_videos: int = 100, recrawl:bool = False):
+        # recrawl: 既に重いデータを取得済みの動画を再取得するかどうか
         logger.info(f"ユーザー @{user.favorite_user_username} の重いデータのクロールを開始")
 
         self.navigate_to_user_page(user.favorite_user_username)
         light_like_datas = self.get_video_light_like_datas_from_user_page(max_videos)
+        if not recrawl:
+            existing_video_ids = self.video_repo.get_existing_heavy_data_video_ids(user.favorite_user_username)
+            light_like_datas = [light_like_data for light_like_data in light_like_datas if light_like_data["video_id"] not in existing_video_ids]
 
-        logger.info(f"新着動画 {len(light_like_datas)}件に対し重いデータのクロールを行います")
+        logger.info(f"動画 {len(light_like_datas)}件に対し重いデータのクロールを行います")
         for light_like_data in light_like_datas:
             try:
                 self.navigate_to_video_page(light_like_data["video_url"])
@@ -670,7 +673,7 @@ class TikTokCrawler:
         logger.info(f"ユーザー @{user.favorite_user_username} の重いデータのクロールを完了しました")
 
 
-    def crawl_favorite_users_heavy(self, max_videos_per_user: int = 100, max_users: int = 10):
+    def crawl_favorite_users_heavy(self, max_videos_per_user: int = 100, max_users: int = 10, recrawl: bool = False):
         logger.info(f"クロール対象のお気に入りユーザー{max_users}件に対し重いデータのクロールを行います")
         favorite_users = self.favorite_user_repo.get_favorite_users(
             self.crawler_account.id,
@@ -679,7 +682,7 @@ class TikTokCrawler:
 
         for user in favorite_users:
             try:
-                self.crawl_user_heavy(user, max_videos_per_user)
+                self.crawl_user_heavy(user, max_videos_per_user=max_videos_per_user, recrawl=recrawl)
             except KeyboardInterrupt:
                 raise
             except Exception:
@@ -689,7 +692,11 @@ class TikTokCrawler:
         logger.info(f"クロール対象のお気に入りユーザー{len(favorite_users)}件に対し重いデータのクロールを完了しました")
 
     
-    def crawl_user_both(self, user: FavoriteUser, max_videos_per_user: int = 100):
+
+    def crawl_user_both(self, user: FavoriteUser, max_videos_per_user: int = 100, recrawl: bool = False):
+        # crawl_user_lightをしてからcrawl_user_heavyをするのと同じ結果を得られる関数。
+        # ただし1点だけ違う点があって、両方終わってからFavoriteUserのlast_crawled_atを更新する。
+        # 重複した読み込みを避けるために作った関数です。
         logger.info(f"ユーザー @{user.favorite_user_username} の軽重両方のデータのクロールを開始")
 
         try:
@@ -704,14 +711,19 @@ class TikTokCrawler:
 
         first_url = light_like_datas[0]["video_url"]
         self.navigate_to_video_page(first_url)
+        self.navigate_to_video_page_creator_videos_tab()
         light_play_datas = self.get_video_light_play_datas_from_video_page_creator_videos_tab(max_videos_per_user+12) # ピン留めとかphoto投稿の影響でちゃんと一対一対応してるか怪しいんでね
         
         self.parse_and_save_video_light_datas(light_like_datas, light_play_datas)
 
         logger.info(f"ユーザー @{user.favorite_user_username} の軽いデータのクロールを完了しました。重いデータのクロールに入ります")
+
         self.navigate_to_user_page_from_video_page()
-        
-        logger.info(f"新着動画 {len(light_like_datas)}件に対し重いデータのクロールを行います")
+        if not recrawl:
+            existing_video_ids = self.video_repo.get_existing_heavy_data_video_ids(user.favorite_user_username)
+            light_like_datas = [light_like_data for light_like_data in light_like_datas if light_like_data["video_id"] not in existing_video_ids]
+
+        logger.info(f"動画 {len(light_like_datas)}件に対し重いデータのクロールを行います")
         for light_like_data in light_like_datas:
             try:
                 self.navigate_to_video_page(light_like_data["video_url"])
@@ -740,7 +752,7 @@ class TikTokCrawler:
         logger.info(f"ユーザー @{user.favorite_user_username} の軽重両方のデータのクロールを完了しました")
 
 
-    def crawl_favorite_users_both(self, max_videos_per_user: int = 100, max_users: int = 10):
+    def crawl_favorite_users_both(self, max_videos_per_user: int = 100, max_users: int = 10, recrawl: bool = False):
         logger.info(f"クロール対象のお気に入りユーザー{max_users}件に対し軽重両方のデータのクロールを行います")
         favorite_users = self.favorite_user_repo.get_favorite_users(
             self.crawler_account.id,
@@ -749,7 +761,7 @@ class TikTokCrawler:
 
         for user in favorite_users:
             try:
-                self.crawl_user_both(user, max_videos_per_user)
+                self.crawl_user_both(user, max_videos_per_user=max_videos_per_user, recrawl=recrawl)
             except KeyboardInterrupt:
                 raise
             except Exception:
@@ -789,6 +801,11 @@ def main():
         default=10,
         help="クロール対象の最大ユーザー数（デフォルト: 10）"
     )
+    parser.add_argument(
+        "--recrawl",
+        action="store_true",
+        help="既にクロール済みの動画を再クロールする (デフォルト: False)"
+    )
     
     args = parser.parse_args()
 
@@ -810,19 +827,22 @@ def main():
             if args.mode == "light":
                 crawler.crawl_favorite_users_light(
                     max_videos_per_user=args.max_videos_per_user,
-                    max_users=args.max_users
+                    max_users=args.max_users,
+                    recrawl=args.recrawl
                 )
             
             if args.mode == "heavy":
                 crawler.crawl_favorite_users_heavy(
                     max_videos_per_user=args.max_videos_per_user,
-                    max_users=args.max_users
+                    max_users=args.max_users,
+                    recrawl=args.recrawl
                 )
 
             if args.mode == "both":
                 crawler.crawl_favorite_users_both(
                     max_videos_per_user=args.max_videos_per_user,
-                    max_users=args.max_users
+                    max_users=args.max_users,
+                    recrawl=args.recrawl
                 )
 
 if __name__ == "__main__":

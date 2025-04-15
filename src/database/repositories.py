@@ -195,7 +195,7 @@ class VideoRepository:
         ))
 
     def get_existing_heavy_data_video_ids(self, user_username: str) -> Set[str]:
-        """指定されたアカウントの重いデータが存在する動画IDを取得"""
+        """指定されたユーザーの動画のうち重いデータを既に取ってあるものの動画IDの集合を取得"""
         query = "SELECT video_id FROM video_heavy_raw_data WHERE user_username = %s"
         cursor = self.db.execute_query(query, (user_username,))
         rows = cursor.fetchall()
