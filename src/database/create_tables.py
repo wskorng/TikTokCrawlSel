@@ -48,6 +48,7 @@ CREATE_TABLES_SQL = [
         video_title TEXT NOT NULL,
         post_time_text VARCHAR(255),
         post_time DATETIME,
+        audio_url VARCHAR(255),
         audio_info_text VARCHAR(255),
         audio_id VARCHAR(255),
         audio_title VARCHAR(255),

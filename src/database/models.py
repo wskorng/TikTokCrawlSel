@@ -52,12 +52,14 @@ class VideoHeavyRawData:
 @dataclass
 class VideoLightRawData:
     id: Optional[int] = None  # 自動採番
-    video_id: str = ""  # TikTokの動画IDそのまま
     video_url: str = ""
+    video_id: str = ""  # TikTokの動画IDそのまま
+    account_username: str = ""  # 動画を投稿したアカウントのユーザー名
     video_thumbnail_url: str = ""
-    video_title: str = ""
+    video_alt_info_text: str = ""  # {audio_author_name}の{audio_title}を使用して{account_nickname}が作成した{video_title}
     play_count_text: Optional[str] = None
     like_count_text: Optional[str] = None
-    video_alt_info_text: str = ""  # {audio_author_name}の{audio_title}を使用して{creator_nickname}が作成した{video_title}
+    play_count: Optional[int] = None
+    like_count: Optional[int] = None
     crawling_algorithm: str = ""
     crawled_at: datetime = datetime.now()

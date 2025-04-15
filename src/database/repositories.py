@@ -154,24 +154,29 @@ class VideoRepository:
         """動画の基本情報を保存"""
         query = """
             INSERT INTO video_light_raw_data (
-                video_id, video_url, video_thumbnail_url, video_title,
-                play_count_text, like_count_text, video_alt_info_text,
+                video_url, video_id, account_username,
+                video_thumbnail_url, video_alt_info_text,
+                play_count_text, like_count_text, play_count, like_count,
                 crawling_algorithm, crawled_at
             ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
             ) ON DUPLICATE KEY UPDATE
                 video_url = VALUES(video_url),
+                video_id = VALUES(video_id),
+                account_username = VALUES(account_username),
                 video_thumbnail_url = VALUES(video_thumbnail_url),
-                video_title = VALUES(video_title),
                 play_count_text = VALUES(play_count_text),
+                play_count = VALUES(play_count),
                 like_count_text = VALUES(like_count_text),
+                like_count = VALUES(like_count),
                 video_alt_info_text = VALUES(video_alt_info_text),
                 crawling_algorithm = VALUES(crawling_algorithm),
                 crawled_at = VALUES(crawled_at)
         """
         self.db.execute_query(query, (
-            data.video_id, data.video_url, data.video_thumbnail_url, data.video_title,
-            data.play_count_text, data.like_count_text, data.video_alt_info_text,
+            data.video_url, data.video_id, data.account_username,
+            data.video_thumbnail_url, data.video_alt_info_text,
+            data.play_count_text, data.play_count, data.like_count_text, data.like_count,
             data.crawling_algorithm, data.crawled_at
         ))
 

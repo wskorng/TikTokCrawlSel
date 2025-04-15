@@ -10,7 +10,7 @@ import random
 import time
 from typing import Optional, List, Dict, Tuple
 
-from ..database.models import VideoDescRawData, VideoPlayStatRawData, VideoLikeStatRawData, CrawlerAccount, FavoriteAccount
+from ..database.models import CrawlerAccount, FavoriteAccount, VideoHeavyRawData, VideoLightRawData
 from ..database.repositories import CrawlerAccountRepository, FavoriteAccountRepository, VideoRepository
 from ..database.database import Database
 from .selenium_manager import SeleniumManager
@@ -165,7 +165,7 @@ class TikTokCrawler:
                 datetime.now()
             )
         except Exception as e:
-            logger.error(f"クローラーの開始に失敗: {e}")
+            logger.exception(f"クローラーの開始に失敗: {e}")
             self.stop()
             raise
 
@@ -184,8 +184,8 @@ class TikTokCrawler:
                 )
                 self._random_sleep(1.0, 2.0)
                 
-        except Exception as e:
-            logger.error(f"ページのスクロールに失敗: {e}")
+        except Exception:
+            logger.exception(f"ページのスクロールに失敗")
 
     def _login(self): # TikTokにログインする
         try:
@@ -222,8 +222,8 @@ class TikTokCrawler:
             )
             logger.info("ログインに成功しました")
 
-        except Exception as e:
-            logger.error(f"ログインに失敗: {e}")
+        except Exception:
+            logger.exception(f"ログインに失敗")
             raise
 
     def navigate_to_user_page(self, username: str) -> bool:
@@ -238,8 +238,8 @@ class TikTokCrawler:
             )
             return True
             
-        except Exception as e:
-            logger.error(f"ユーザー {username} のページへの移動に失敗: {e}")
+        except Exception:
+            logger.exception(f"ユーザー {username} のページへの移動に失敗")
             return False
 
     def get_video_light_like_datas_from_user_page(self, max_videos: int = 100) -> List[Dict[str, str]]:
@@ -276,14 +276,14 @@ class TikTokCrawler:
                     })
                     logger.debug(f"動画のいいね数情報を取得: {video_url} -> {like_count_text}")
                     
-                except NoSuchElementException as e:
-                    logger.warning(f"動画情報の取得に失敗: {e}")
+                except NoSuchElementException:
+                    logger.warning(f"動画情報の取得に失敗", exc_info=True)
                     continue
                     
             return video_stats
             
-        except Exception as e:
-            logger.error(f"動画一覧の取得に失敗: {e}")
+        except Exception:
+            logger.exception(f"動画一覧の取得に失敗")
             return []
 
     def navigate_to_video_page(self, video_url: str) -> bool:
@@ -305,8 +305,8 @@ class TikTokCrawler:
             )
             return True
             
-        except Exception as e:
-            logger.error(f"動画ページへの移動に失敗: {e}")
+        except Exception:
+            logger.exception(f"動画ページへの移動に失敗")
             return False
 
     def get_video_heavy_data_from_video_page(self) -> Optional[Dict]:
@@ -321,8 +321,7 @@ class TikTokCrawler:
             audio_info_text = self.driver.find_element(By.CSS_SELECTOR, "[data-e2e='browse-music'] .css-pvx3oa-DivMusicText").text
             like_count_text = self.driver.find_element(By.CSS_SELECTOR, "strong[data-e2e='browse-like-count']").text
             comment_count_text = self.driver.find_element(By.CSS_SELECTOR, "strong[data-e2e='browse-comment-count']").text
-            collection_count_text = self.driver.find_element(By.CSS_SELECTOR, "strong[data-e2e='browse-collect-count']").text
-            share_count_text = self.driver.find_element(By.CSS_SELECTOR, "strong[data-e2e='undefined-count']").text
+            collection_count_text = self.driver.find_element(By.CSS_SELECTOR, "strong[data-e2e='undefined-count']").text
             
             return {
                 "video_url": video_url,
@@ -335,12 +334,11 @@ class TikTokCrawler:
                 "like_count_text": like_count_text,
                 "comment_count_text": comment_count_text,
                 "collection_count_text": collection_count_text,
-                "share_count_text": share_count_text,
                 "crawling_algorithm": "selenium-human-like-1"
             }
 
-        except Exception as e:
-            logger.error(f"動画の詳細情報の取得に失敗: {e}")
+        except Exception:
+            logger.exception(f"動画の詳細情報の取得に失敗")
             return None
     
     def navigate_to_video_page_creator_videos_tab(self) -> bool:
@@ -354,8 +352,8 @@ class TikTokCrawler:
             self._random_sleep(1.0, 2.0)
             return True
             
-        except Exception as e:
-            logger.error(f"動画ページの「クリエイターの動画」タブへの移動に失敗: {e}")
+        except Exception:
+            logger.exception(f"動画ページの「クリエイターの動画」タブへの移動に失敗")
             return False
 
     def get_video_light_play_datas_from_video_page_creator_videos_tab(self, max_videos: int = 100) -> List[Dict[str, str]]:
@@ -383,14 +381,14 @@ class TikTokCrawler:
                     })
                     logger.debug(f"動画の再生数情報を取得: {thumbnail_url} -> {play_count_text}")
                     
-                except NoSuchElementException as e:
-                    logger.warning(f"動画情報の取得に失敗: {e}")
+                except NoSuchElementException:
+                    logger.warning(f"動画情報の取得に失敗", exc_info=True)
                     continue
                     
             return video_stats
             
-        except Exception as e:
-            logger.error(f"動画一覧の取得に失敗: {e}")
+        except Exception:
+            logger.exception(f"動画一覧の取得に失敗")
             return []
 
     def parse_and_save_video_heavy_data(self, heavy_data: Dict, thumbnail_url: str) -> bool:
@@ -412,41 +410,41 @@ class TikTokCrawler:
 
             post_time = parse_tiktok_time(heavy_data.get("post_time_text"), datetime.now())
 
-            data = {
-                "id": None,  # 自動採番
-                "video_url": heavy_data["video_url"],
-                "video_id": video_id,
-                "account_username": heavy_data["account_username"],
-                "account_nickname": heavy_data["account_nickname"],
-                "video_thumbnail_url": thumbnail_url,
-                "video_title": heavy_data["video_title"],
-                "post_time_text": heavy_data.get("post_time_text"),
-                "post_time": post_time,
-                "audio_url": heavy_data.get("audio_url"),
-                "audio_info_text": heavy_data.get("audio_info_text"),
-                "audio_id": None,  # ここでは取得できない
-                "audio_title": audio_title,
-                "audio_author_name": audio_author_name,
-                "play_count_text": None,  # ここでは取得できない
-                "play_count": None,  # ここでは取得できない
-                "like_count_text": heavy_data.get("like_count_text"),
-                "like_count": parse_tiktok_number(heavy_data.get("like_count_text")),
-                "comment_count_text": heavy_data.get("comment_count_text"),
-                "comment_count": parse_tiktok_number(heavy_data.get("comment_count_text")),
-                "collect_count_text": heavy_data.get("collection_count_text"),
-                "collect_count": parse_tiktok_number(heavy_data.get("collection_count_text")),
-                "share_count_text": heavy_data.get("share_count_text"),
-                "share_count": parse_tiktok_number(heavy_data.get("share_count_text")),
-                "crawled_at": datetime.now(),
-                "crawling_algorithm": heavy_data["crawling_algorithm"]
-            }
+            data = VideoHeavyRawData(
+                id=None,
+                video_url=heavy_data["video_url"],
+                video_id=video_id,
+                account_username=heavy_data["account_username"],
+                account_nickname=heavy_data["account_nickname"],
+                video_thumbnail_url=thumbnail_url,
+                video_title=heavy_data["video_title"],
+                post_time_text=heavy_data.get("post_time_text"),
+                post_time=post_time,
+                audio_url=heavy_data.get("audio_url"),
+                audio_info_text=heavy_data.get("audio_info_text"),
+                audio_id=None,  # ここでは取得できない(できるかも)
+                audio_title=audio_title,
+                audio_author_name=audio_author_name,
+                play_count_text=None,  # ここでは取得できない
+                play_count=None,  # ここでは取得できない
+                like_count_text=heavy_data.get("like_count_text"),
+                like_count=parse_tiktok_number(heavy_data.get("like_count_text")),
+                comment_count_text=heavy_data.get("comment_count_text"),
+                comment_count=parse_tiktok_number(heavy_data.get("comment_count_text")),
+                collect_count_text=heavy_data.get("collection_count_text"),
+                collect_count=parse_tiktok_number(heavy_data.get("collection_count_text")),
+                share_count_text=None,  # ここでは取得できない
+                share_count=None,  # ここでは取得できない
+                crawled_at=datetime.now(),
+                crawling_algorithm=heavy_data["crawling_algorithm"]
+            )
             
             self.video_repo.save_video_heavy_data(data)
-            logger.info(f"動画の詳細情報を保存: {heavy_data['video_id']}")
+            logger.info(f"動画の重いデータを保存: {data.video_id}")
             return True
             
         except Exception as e:
-            logger.error(f"動画の詳細情報の保存に失敗: {e}")
+            logger.exception(f"動画の重いデータの保存に失敗")
             return False
 
     def parse_and_save_video_light_datas(self, light_like_datas: List[Dict], light_play_datas: List[Dict]) -> bool:
@@ -468,34 +466,34 @@ class TikTokCrawler:
                 if "?" in video_id:
                     video_id = video_id.split("?")[0]
 
-                data = {
-                    "id": None,
-                    "video_url": like_data["video_url"],
-                    "video_id": video_id,
-                    "account_username": account_username,
-                    "video_thumbnail_url": like_data["video_thumbnail_url"],
-                    "video_alt_info_text": like_data["video_alt_info_text"],
-                    "like_count_text": like_data["like_count_text"],
-                    "like_count": parse_tiktok_number(like_data["like_count_text"]),
-                    "play_count_text": play_count_text,
-                    "play_count": parse_tiktok_number(play_count_text),
-                    "crawling_algorithm": like_data["crawling_algorithm"],
-                    "crawled_at": datetime.now()
-                }
+                data = VideoLightRawData(
+                    id=None,
+                    video_url=like_data["video_url"],
+                    video_id=video_id,
+                    account_username=account_username,
+                    video_thumbnail_url=like_data["video_thumbnail_url"],
+                    video_alt_info_text=like_data["video_alt_info_text"],
+                    like_count_text=like_data["like_count_text"],
+                    like_count=parse_tiktok_number(like_data["like_count_text"]),
+                    play_count_text=play_count_text,
+                    play_count=parse_tiktok_number(play_count_text),
+                    crawling_algorithm=like_data["crawling_algorithm"],
+                    crawled_at=datetime.now()
+                )
 
                 self.video_repo.save_video_light_data(data)
-                logger.info(f"動画の基本情報を保存: {data['video_id']}")
+                logger.info(f"動画の基本情報を保存: {data}")
             
             return True
             
         except Exception as e:
-            logger.error(f"動画の基本情報の保存に失敗: {e}")
+            logger.exception(f"動画の基本情報の保存に失敗")
             return False
             
 
 
 
-    def crawl_favorite_accounts(self, max_accounts: int = 10, max_videos_per_account: int = 100):
+    def crawl_favorite_accounts_light(self, max_accounts: int = 10, max_videos_per_account: int = 100):
         try:
             logger.info(f"クロール対象のお気に入りアカウント{max_accounts}件に対し軽いデータのクロールを行います")
             favorite_accounts = self.favorite_account_repo.get_favorite_accounts(
@@ -528,10 +526,10 @@ class TikTokCrawler:
                     first_url = light_like_datas[0]["video_url"]
                     if not self.navigate_to_video_page(first_url):
                         continue
-                    heavy_data = self.get_video_heavy_data_from_video_page()
-                    if not heavy_data:
-                        continue
-                    self.parse_and_save_video_heavy_data(heavy_data)
+                    # heavy_data = self.get_video_heavy_data_from_video_page()
+                    # if not heavy_data:
+                    #     continue
+                    # self.parse_and_save_video_heavy_data(heavy_data)
 
                     # 動画ページの「クリエイターの動画」タブに移動
                     if not self.navigate_to_video_page_creator_videos_tab():
@@ -551,13 +549,13 @@ class TikTokCrawler:
                     )
 
                 except Exception as e:
-                    logger.error(f"アカウント {account.favorite_account_username} のクロール中にエラー: {e}")
+                    logger.exception(f"アカウント {account.favorite_account_username} のクロール中にエラー: {e}")
                     continue
             
             logger.info(f"クロール対象のお気に入りアカウント{max_accounts}件に対し処理を完了しました")
 
         except Exception as e:
-            logger.error(f"クロール処理でエラー: {e}")
+            logger.exception(f"クロール処理に失敗")
             raise
 
 
@@ -589,14 +587,14 @@ def main():
             crawler.start(args.account_id)
             
             # お気に入りアカウントのクロール
-            crawler.crawl_favorite_accounts()
+            crawler.crawl_favorite_accounts_light()
             
         finally:
             # クローラーの停止（Seleniumのクリーンアップ）
             crawler.stop()
             
     except Exception as e:
-        logger.error(f"メイン処理でエラー: {e}")
+        logger.exception(f"メイン処理でエラー: {e}")
         raise
     
     finally:
