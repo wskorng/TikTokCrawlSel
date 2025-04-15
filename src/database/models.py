@@ -27,8 +27,8 @@ class VideoHeavyRawData:
     video_url: str = ""
     video_thumbnail_url: str = ""
     video_title: str = ""
-    creator_nickname: str = ""
-    creator_unique_id: str = ""
+    account_username: str = ""
+    account_nickname: str = ""
     post_time_text: str = ""
     post_time: Optional[datetime] = None  # パースできないかもしれない
     audio_url: Optional[str] = None

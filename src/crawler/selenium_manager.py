@@ -27,7 +27,7 @@ class SeleniumManager:
             options.add_argument('--ignore-gpu-blocklist')
             options.add_argument('--enable-hardware-overlays')
             options.add_argument('--enable-features=VaapiVideoDecoder')
-            options.add_argument('--start-maximized')
+            options.add_argument('--start-maximized') # ウィンドウ最大じゃないとget_video_light_like_datas_from_user_pageでthumbnail_urlの取得がおかしくなるのでそれを解決できない限り変えないこと
             
             service = Service()
             self.driver = webdriver.Chrome(service=service, options=options)

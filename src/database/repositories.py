@@ -106,7 +106,7 @@ class VideoRepository:
         query = """
             INSERT INTO video_heavy_raw_data (
                 video_id, video_url, video_thumbnail_url, video_title,
-                creator_nickname, creator_unique_id, post_time_text, post_time,
+                account_username, account_nickname, post_time_text, post_time,
                 audio_url, audio_info_text, audio_id, audio_title, audio_author_name,
                 play_count_text, play_count, like_count_text, like_count,
                 comment_count_text, comment_count, collect_count_text, collect_count,
@@ -119,8 +119,8 @@ class VideoRepository:
                 video_url = VALUES(video_url),
                 video_thumbnail_url = VALUES(video_thumbnail_url),
                 video_title = VALUES(video_title),
-                creator_nickname = VALUES(creator_nickname),
-                creator_unique_id = VALUES(creator_unique_id),
+                account_username = VALUES(account_username),
+                account_nickname = VALUES(account_nickname),
                 post_time_text = VALUES(post_time_text),
                 post_time = VALUES(post_time),
                 audio_url = VALUES(audio_url),
@@ -143,7 +143,7 @@ class VideoRepository:
         """
         self.db.execute_query(query, (
             data.video_id, data.video_url, data.video_thumbnail_url, data.video_title,
-            data.creator_nickname, data.creator_unique_id, data.post_time_text, data.post_time,
+            data.account_username, data.account_nickname, data.post_time_text, data.post_time,
             data.audio_url, data.audio_info_text, data.audio_id, data.audio_title, data.audio_author_name,
             data.play_count_text, data.play_count, data.like_count_text, data.like_count,
             data.comment_count_text, data.comment_count, data.collect_count_text, data.collect_count,
@@ -180,10 +180,10 @@ class VideoRepository:
             data.crawling_algorithm, data.crawled_at
         ))
 
-    def get_existing_video_ids(self) -> Set[str]:
-        """既存の動画IDを取得"""
-        query = "SELECT video_id FROM video_heavy_raw_data UNION SELECT video_id FROM video_light_raw_data"
-        cursor = self.db.execute_query(query)
+    def get_existing_heavy_data_video_ids(self, account_username: str) -> Set[str]:
+        """指定されたアカウントの重いデータが存在する動画IDを取得"""
+        query = "SELECT video_id FROM video_heavy_raw_data WHERE account_username = %s"
+        cursor = self.db.execute_query(query, (account_username,))
         rows = cursor.fetchall()
         cursor.close()
         return {row[0] for row in rows}

@@ -389,7 +389,7 @@ class TikTokCrawler:
             return video_stats
             
         except Exception:
-            logger.exception(f"動画の軽いデータの前半の取得に失敗")
+            logger.exception(f"動画の軽いデータの前半の取得に失敗: {len(video_elements)}件走査しました")
             return []
 
     def navigate_to_video_page(self, video_url: str) -> bool:
@@ -428,7 +428,7 @@ class TikTokCrawler:
             audio_info_text = self.driver.find_element(By.CSS_SELECTOR, "[data-e2e='browse-music'] .css-pvx3oa-DivMusicText").text
             like_count_text = self.driver.find_element(By.CSS_SELECTOR, "strong[data-e2e='browse-like-count']").text
             comment_count_text = self.driver.find_element(By.CSS_SELECTOR, "strong[data-e2e='browse-comment-count']").text
-            collection_count_text = self.driver.find_element(By.CSS_SELECTOR, "strong[data-e2e='undefined-count']").text
+            collect_count_text = self.driver.find_element(By.CSS_SELECTOR, "strong[data-e2e='undefined-count']").text
             
             logger.debug(f"動画の重いデータを取得しました: {video_url}")
 
@@ -442,7 +442,7 @@ class TikTokCrawler:
                 "audio_info_text": audio_info_text,
                 "like_count_text": like_count_text,
                 "comment_count_text": comment_count_text,
-                "collection_count_text": collection_count_text,
+                "collect_count_text": collect_count_text,
                 "crawling_algorithm": "selenium-human-like-1"
             }
 
@@ -562,8 +562,8 @@ class TikTokCrawler:
                 like_count=parse_tiktok_number(heavy_data.get("like_count_text")),
                 comment_count_text=heavy_data.get("comment_count_text"),
                 comment_count=parse_tiktok_number(heavy_data.get("comment_count_text")),
-                collect_count_text=heavy_data.get("collection_count_text"),
-                collect_count=parse_tiktok_number(heavy_data.get("collection_count_text")),
+                collect_count_text=heavy_data.get("collect_count_text"),
+                collect_count=parse_tiktok_number(heavy_data.get("collect_count_text")),
                 share_count_text=None,  # ここでは取得できない
                 share_count=None,  # ここでは取得できない
                 crawled_at=datetime.now(),
@@ -640,7 +640,7 @@ class TikTokCrawler:
             # 各アカウントの動画をクロール
             for account in favorite_accounts:
                 try:
-                    logger.info(f"アカウント @{account.favorite_account_username} のクロールを開始")
+                    logger.info(f"アカウント @{account.favorite_account_username} の軽いデータのクロールを開始")
 
                     # アカウントページに移動
                     if not self.navigate_to_user_page(account.favorite_account_username):
@@ -667,15 +667,16 @@ class TikTokCrawler:
                         account.favorite_account_username,
                         datetime.now()
                     )
+                    logger.info(f"アカウント @{account.favorite_account_username} の軽いデータのクロールを完了しました")
 
                 except Exception:
-                    logger.exception(f"アカウント @{account.favorite_account_username} のクロール中に失敗")
+                    logger.exception(f"アカウント @{account.favorite_account_username} の軽いデータのクロール中に失敗")
                     continue
             
-            logger.info(f"クロール対象のお気に入りアカウント{len(favorite_accounts)}件に対し処理を完了しました")
+            logger.info(f"クロール対象のお気に入りアカウント{len(favorite_accounts)}件に対し軽いデータのクロールを完了しました")
 
         except Exception:
-            logger.exception(f"クロール処理に失敗")
+            logger.exception(f"軽いデータのクロール処理に失敗")
             raise
 
 
@@ -694,10 +695,10 @@ class TikTokCrawler:
             # 各アカウントの動画をクロール
             for account in favorite_accounts:
                 try:
-                    logger.info(f"アカウント @{account.favorite_account_username} のクロールを開始")
+                    logger.info(f"アカウント @{account.favorite_account_username} の重いデータのクロールを開始")
 
                     # 既存の動画IDを取得（既存動画チェック用）
-                    existing_video_ids = self.video_repo.get_existing_video_ids()
+                    existing_video_ids = self.video_repo.get_existing_heavy_data_video_ids(account.favorite_account_username)
                     logger.debug(f"既存の動画ID数: {len(existing_video_ids)}")
 
                     # アカウントページに移動
@@ -717,7 +718,7 @@ class TikTokCrawler:
                         heavy_data = self.get_video_heavy_data_from_video_page()
                         if not heavy_data:
                             continue # これ失敗したら続行不能
-                        self.parse_and_save_video_heavy_data(heavy_data)
+                        self.parse_and_save_video_heavy_data(heavy_data, like_data["video_thumbnail_url"])
                         self._random_sleep(10.0, 20.0) # 最低限見てる感出す
                         if not self.navigate_to_user_page_from_video_page():
                             break # これ失敗したらその後も続行不能
@@ -728,9 +729,10 @@ class TikTokCrawler:
                         account.favorite_account_username,
                         datetime.now()
                     )
+                    logger.info(f"アカウント @{account.favorite_account_username} の重いデータのクロールを完了しました")
 
                 except Exception:
-                    logger.exception(f"アカウント @{account.favorite_account_username} のクロール中に失敗")
+                    logger.exception(f"アカウント @{account.favorite_account_username} の重いデータのクロール中に失敗")
                     continue
             
             logger.info(f"クロール対象のお気に入りアカウント{len(favorite_accounts)}件に対し重いデータのクロールを完了しました")
@@ -745,7 +747,33 @@ def main():
         # コマンドライン引数の処理
         import argparse
         parser = argparse.ArgumentParser(description="TikTok動画データ収集クローラー")
-        parser.add_argument("--account-id", type=int, help="使用するクローラーアカウントのID")
+        
+        # 必須の引数
+        parser.add_argument(
+            "mode",
+            choices=["light", "heavy", "both"],
+            help="クロールモード。light: 軽いデータのみ、heavy: 重いデータのみ、both: 両方"
+        )
+        
+        # オプションの引数
+        parser.add_argument(
+            "--crawler-account-id",
+            type=int,
+            help="使用するクローラーアカウントのID"
+        )
+        parser.add_argument(
+            "--max-videos-per-account",
+            type=int,
+            default=50,
+            help="1アカウントあたりの最大取得動画数（デフォルト: 50）"
+        )
+        parser.add_argument(
+            "--max-accounts",
+            type=int,
+            default=10,
+            help="クロール対象の最大アカウント数（デフォルト: 10）"
+        )
+        
         args = parser.parse_args()
 
         # データベース接続の初期化
@@ -765,10 +793,20 @@ def main():
         
         try:
             # クローラーを開始（Selenium初期化とログイン）
-            crawler.start(args.account_id)
+            crawler.start(args.crawler_account_id)
             
-            # お気に入りアカウントのクロール
-            crawler.crawl_favorite_accounts_light(50)
+            # モードに応じてクロール
+            if args.mode in ["light", "both"]:
+                crawler.crawl_favorite_accounts_light(
+                    max_videos_per_account=args.max_videos_per_account,
+                    max_accounts=args.max_accounts
+                )
+            
+            if args.mode in ["heavy", "both"]:
+                crawler.crawl_favorite_accounts_heavy(
+                    max_videos_per_account=args.max_videos_per_account,
+                    max_accounts=args.max_accounts
+                )
             
         finally:
             # クローラーの停止（Seleniumのクリーンアップ）
