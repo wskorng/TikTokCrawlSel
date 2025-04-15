@@ -197,7 +197,7 @@ class TikTokCrawler:
         # Seleniumの設定
         self.selenium_manager = SeleniumManager(self.crawler_account.proxy)
         self.driver = self.selenium_manager.setup_driver()
-        self.wait = WebDriverWait(self.driver, 10)  # タイムアウトを10秒に変更
+        self.wait = WebDriverWait(self.driver, 15)  # タイムアウトを15秒に変更
 
         # ログイン
         self._login()
@@ -293,9 +293,10 @@ class TikTokCrawler:
         login_button.click()
 
         # ログイン完了を待機
-        # プロフィールアイコンが表示されるまで待機
-        self.wait.until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "[data-e2e='profile-icon']"))
+        # プロフィールアイコンが表示されるまで待機（60秒待機）
+        login_wait = WebDriverWait(self.driver, 60)  # 絵合わせ認証が出てきたら人力で解いてね
+        login_wait.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "[data-e2e='profile-icon']")),
         )
         logger.info("ログインに成功しました")
 
@@ -321,15 +322,13 @@ class TikTokCrawler:
         
         except TimeoutException:
             logger.debug("user-pageが見つかったにも関わらずuser-post-itemが見つかりません。ユーザーが削除されている可能性があるので調査します。")
-            a = self.wait.until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "p.css-emuynwa1"))
-            )
-            if a.text == "このアカウントは見つかりませんでした":
+            title = self.driver.title
+            if title.startswith("このアカウントは見つかりませんでした"):
                 logger.warning(f"ユーザー @{username} は削除されたようです。データベースのis_aliveをFalseに更新します。")
                 self.favorite_user_repo.update_favorite_user_is_alive(username, False)
                 raise self.UserNotFoundException(f"ユーザー @{username} は存在しません")
             else:
-                logger.exception(f"emuynwa1が出てるのでユーザーが削除されてそうなんだけど、textが違う: {a.text}")
+                logger.error(f"ユーザーが削除されていそうなのにページのタイトルが違います: {title}")
                 raise
         
         # ユーザーページの読み込みを確認
@@ -596,7 +595,14 @@ class TikTokCrawler:
     def crawl_user_light(self, user: FavoriteUser, max_videos: int = 100):
         logger.info(f"ユーザー @{user.favorite_user_username} の軽いデータのクロールを開始")
 
-        self.navigate_to_user_page(user.favorite_user_username)
+        try:
+            self.navigate_to_user_page(user.favorite_user_username)
+        except self.UserNotFoundException:
+            logger.error(f"ユーザー @{user.favorite_user_username} は存在しないので、このユーザーに対する軽いデータのクロールを中断します")
+            return False
+        except Exception:
+            raise
+        
         light_like_datas = self.get_video_light_like_datas_from_user_page(max_videos)
 
         first_url = light_like_datas[0]["video_url"]
@@ -652,8 +658,11 @@ class TikTokCrawler:
                     self.navigate_to_user_page_from_video_page()
             except KeyboardInterrupt:
                 raise
+            except self.UserNotFoundException:
+                logger.info(f"ユーザー @{light_like_data['user_username']} は存在しないので、このユーザーに対する重いデータのクロールを中断します")
+                return False
             except Exception:
-                logger.exception(f"動画 {light_like_data['video_url']} の重いデータのクロール中に失敗。継続します")
+                logger.exception(f"動画 {light_like_data['video_url']} の重いデータのクロール中に失敗。スキップします")
                 continue
 
         self.favorite_user_repo.update_favorite_user_last_crawled(
@@ -676,7 +685,7 @@ class TikTokCrawler:
             except KeyboardInterrupt:
                 raise
             except Exception:
-                logger.exception(f"ユーザー @{user.favorite_user_username} の重いデータのクロール中に失敗。継続します")
+                logger.exception(f"ユーザー @{user.favorite_user_username} の重いデータのクロール中に失敗。スキップします")
                 continue
         
         logger.info(f"クロール対象のお気に入りユーザー{len(favorite_users)}件に対し重いデータのクロールを完了しました")
