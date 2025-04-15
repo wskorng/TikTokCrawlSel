@@ -296,17 +296,27 @@ class TikTokCrawler:
         logger.info("ログインに成功しました")
 
 
+    class UserNotFoundException(Exception):
+        """ユーザーが見つからない（アカウントが削除されている等）場合の例外"""
+        pass
+
     def navigate_to_user_page(self, username: str):
         logger.debug(f"ユーザー @{username} のページに移動中...")
         self.driver.get(f"{self.BASE_URL}/@{username}")
         self._random_sleep(2.0, 4.0)
+
+        # まずページのタイトルを確認
+        title = self.driver.title
+        if title.startswith("このアカウントは見つかりませんでした。"):
+            logger.warning(f"ユーザー @{username} は存在しません。データベースのis_aliveをFalseに更新します。")
+            self.favorite_account_repo.update_favorite_account_is_alive(username, False)
+            raise self.UserNotFoundException(f"ユーザー @{username} は存在しません")
         
         # ユーザーページの読み込みを確認
         self.wait.until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "[data-e2e='user-post-item']"))
         )
         logger.debug(f"ユーザー @{username} のページに移動しました")
-        return True
             
 
     def get_video_light_like_datas_from_user_page(self, max_videos: int = 100) -> List[Dict[str, str]]:
