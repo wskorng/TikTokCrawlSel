@@ -44,15 +44,30 @@ def insert_favorite_users(db: Database, crawler_account_id: int):
     """お気に入りアカウントのテストデータを投入"""
     accounts = [
         {
-            "username": "123987443",  # Marina  (死んでる)
+            "username": "fukada0318",  # 深田えいみ 3つもピン留めしてる
+            "priority": 100
+        },
+        {
+            "username": "michaeljackton.official",  # マイケル・ジャクトン(のusernameに背乗りしてる謎の外人) 3本しか動画ない
+            "priority": 100
+        },
+        {
+            "username": "123987443",  # Marina  死んでる
             "priority": 100
         },
         {
             "username": "cutie_street",  # CUTIE STREET
             "priority": 100
+        }
+    ]
+
+    """accounts = [
+        {
+            "username": "cutie_street",  # CUTIE STREET
+            "priority": 100
         },
         {
-            "username": "kana.sii.i",  # 板倉可奈
+            "username": "123987443",  # Marina  死んでる
             "priority": 100
         },
         {
@@ -72,7 +87,7 @@ def insert_favorite_users(db: Database, crawler_account_id: int):
             "priority": 100
         },
         {
-            "username": "fukada0318",  # 深田えいみ
+            "username": "fukada0318",  # 深田えいみ (3つもピン留めしてる)
             "priority": 100
         },
         {
@@ -119,7 +134,7 @@ def insert_favorite_users(db: Database, crawler_account_id: int):
             "username": "michaeljackton.official",  # マイケル・ジャクトン(のusernameに背乗りしてる謎の外人) 3本しか動画ないのがコーナーケースのテストに使えるので使う
             "priority": 100
         },
-    ]
+    ]"""
 
     
     for account in accounts:

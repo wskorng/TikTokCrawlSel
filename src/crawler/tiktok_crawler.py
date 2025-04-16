@@ -161,19 +161,18 @@ def parse_tiktok_number(text: str) -> Optional[int]:
 class TikTokCrawler:
     BASE_URL = "https://www.tiktok.com"
     
+    # TikTokクローラーの初期化
+    # Args:
+    #     crawler_account_repo: クローラーアカウントリポジトリ
+    #     favorite_user_repo: お気に入りユーザーリポジトリ
+    #     video_repo: 動画リポジトリ
+    #     crawler_account_id: 使用するクローラーアカウントのID（Noneの場合は自動選択）
+    # Returns:
+    #     TikTokCrawlerインスタンス
     def __init__(self, crawler_account_repo: CrawlerAccountRepository,
                  favorite_user_repo: FavoriteUserRepository,
                  video_repo: VideoRepository,
                  crawler_account_id: Optional[int] = None):
-        """
-        TikTokクローラーの初期化
-        
-        Args:
-            crawler_account_repo: クローラーアカウントリポジトリ
-            favorite_user_repo: お気に入りユーザーリポジトリ
-            video_repo: 動画リポジトリ
-            crawler_account_id: 使用するクローラーアカウントのID（Noneの場合は自動選択）
-        """
         self.crawler_account_repo = crawler_account_repo
         self.favorite_user_repo = favorite_user_repo
         self.video_repo = video_repo
@@ -217,7 +216,8 @@ class TikTokCrawler:
     def _random_sleep(self, min_seconds: float = 1.0, max_seconds: float = 3.0):
         time.sleep(random.uniform(min_seconds, max_seconds))
 
-    def _login(self): # TikTokにログインする
+    # クロール用アカウントself.crawler_accountでTikTokにログインする
+    def _login(self):
         logger.info(f"クロール用アカウント{self.crawler_account.username}でTikTokにログイン中...")
         self.driver.get(f"{self.BASE_URL}/login/phone-or-email/email")
         self._random_sleep(2.0, 4.0)
@@ -253,10 +253,15 @@ class TikTokCrawler:
         logger.info(f"クロール用アカウント{self.crawler_account.username}でTikTokへのログインに成功しました")
 
 
-    class UserNotFoundException(Exception):
-        """ユーザーが見つからない（アカウントが削除されている等）場合の例外"""
+    # TikTokユーザーが見つからない（アカウントが削除されている等）場合の例外
+    # ユーザー単位の関数で最も大きいところで処置完了するように設計しましょう
+    class TikTokUserNotFoundException(Exception):
         pass
 
+    # ユーザーページに移動する
+    # Condition: 自由
+    # Args:
+    #     username: ユーザー名
     def navigate_to_user_page(self, username: str):
         logger.debug(f"ユーザー @{username} のページに移動中...")
         self.driver.get(f"{self.BASE_URL}/@{username}")
@@ -278,7 +283,7 @@ class TikTokCrawler:
             if title.startswith("このアカウントは見つかりませんでした"):
                 logger.info(f"ユーザー @{username} は削除されたようです。データベースのis_aliveをFalseに更新します。")
                 self.favorite_user_repo.update_favorite_user_is_alive(username, False)
-                raise self.UserNotFoundException(f"ユーザー @{username} は存在しません")
+                raise self.TikTokUserNotFoundException(f"ユーザー @{username} は存在しません")
             else:
                 logger.error(f"ユーザーが削除されていそうなのにページのタイトルが違います: {title}")
                 raise
@@ -286,7 +291,14 @@ class TikTokCrawler:
         # ユーザーページの読み込みを確認
         logger.debug(f"ユーザー @{username} のページに移動しました")
             
-
+    # ユーザーページをスクロールする
+    # Condition: ユーザーページが開かれていること
+    # Args:
+    #     need_items_count: 目標の画像要素数
+    #     max_scroll_attempts: 最大スクロール回数
+    # Returns: 目標の画像要素数に達したかどうか
+    # やたら丁寧な実装になっている理由は、そうしないとちゃんとサムネがロードされずthumbnail_urlがこんなふうになるから
+    #   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
     def scroll_user_page(self, need_items_count: int = 100, max_scroll_attempts: int = None) -> bool:
         logger.debug(f"{need_items_count}件の画像要素を目標にユーザーページをスクロールします...")
 
@@ -342,7 +354,11 @@ class TikTokCrawler:
         logger.debug(f"スクロール回数の上限に達しました。{current_items_count}件の画像要素を確認しました。スクロールを完了します。")
         return True
 
-
+    # 動画の軽いデータを取得する
+    # Condition: ユーザーページが開かれていること
+    # Args:
+    #     max_videos: 取得する動画の最大数
+    # Returns: 動画の軽いデータの前半(辞書型)のリスト
     def get_video_light_like_datas_from_user_page(self, max_videos: int = 100) -> List[Dict[str, str]]:
         logger.debug(f"動画の軽いデータの前半を取得中...")
         video_stats = []
@@ -390,8 +406,11 @@ class TikTokCrawler:
         logger.debug(f"動画の軽いデータの前半を取得しました: {len(video_stats)}件")
         return video_stats
 
-    
-    def get_latest_video_url_from_user_page(self):
+    # ピン留めされていない動画の中で最も新しいもののURLを取得する
+    # Condition: ユーザーページが開かれていること
+    # Returns: 動画のURL
+    # 単に最も上にある動画だとピン留めされた動画の可能性があり、その場合video_page_creator_videos_tabが新着動画のそれではなくなる
+    def get_latest_video_url_from_user_page(self) -> str:
         logger.debug(f"ピン留めされていない動画の中で最も新しいもののURLを取得中...")
         
         # 動画要素を全て取得
@@ -411,7 +430,12 @@ class TikTokCrawler:
         logger.warning(f"ピン留めされていない動画が見つかりませんでした。代わりにピン留めされている適当な動画のURLを返します。: {video_url}")
         return video_url
 
-
+    # 動画ページに移動する
+    # Condition: [link_should_be_in_page==Trueの場合] ユーザーページが開かれていること
+    #            [link_should_be_in_page==Falseの場合] 自由
+    # Args:
+    #     video_url: 動画のURL
+    #     link_should_be_in_page: 動画ページへのリンクがページに含まれているはずか
     def navigate_to_video_page(self, video_url: str, link_should_be_in_page: bool = True):
         logger.debug(f"動画ページに移動中...: {video_url}")
 
@@ -433,7 +457,9 @@ class TikTokCrawler:
         )
         logger.debug(f"動画ページに移動しました: {video_url}")
 
-
+    # 動画ページの重いデータを取得する
+    # Condition: 動画ページが開かれていること
+    # Returns: 動画の重いデータ
     def get_video_heavy_data_from_video_page(self) -> Dict[str, str]:
         logger.debug(f"動画の重いデータを取得中...")
     
@@ -464,7 +490,8 @@ class TikTokCrawler:
             "crawling_algorithm": "selenium-human-like-1"
         }
 
-    
+    # 動画ページからユーザーページに移動する
+    # Condition: もともとユーザーページからのクリックで動画ページが開かれていること
     def navigate_to_user_page_from_video_page(self):
         logger.debug("動画ページの閉じるボタンをクリックしてユーザーページに戻ります...")
 
@@ -481,6 +508,8 @@ class TikTokCrawler:
         logger.debug("ユーザーページに戻りました")
 
 
+    # 動画ページの「クリエイターの動画」タブに移動する
+    # Condition: 動画ページが開かれていること
     def navigate_to_video_page_creator_videos_tab(self):
         logger.debug("動画ページの「クリエイターの動画」タブに移動中...")
         
@@ -493,6 +522,14 @@ class TikTokCrawler:
         logger.debug("動画ページの「クリエイターの動画」タブに移動しました")
 
 
+    # 動画ページの「クリエイターの動画」タブをスクロールする
+    # Condition: 動画ページの「クリエイターの動画」タブが開かれていること
+    # Args:
+    #     need_items_count: 目標の画像要素数
+    #     max_scroll_attempts: 最大スクロール回数
+    # Returns: 目標の画像要素数か最大スクロール回数に達したかどうか
+    # やたら丁寧な実装になっている理由は、そうしないとちゃんとサムネがロードされずthumbnail_urlがこんなふうになるから
+    #   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
     def scroll_video_page_creator_videos_tab(self, need_items_count: int = 100, max_scroll_attempts: int = None) -> bool:
         logger.debug(f"{need_items_count}件の画像要素を目標にクリエイターの動画タブをスクロールします...")
 
@@ -551,6 +588,11 @@ class TikTokCrawler:
         return True
 
 
+    # 動画ページの「クリエイターの動画」タブから動画の軽いデータの後半を取得する
+    # Condition: 動画ページの「クリエイターの動画」タブが開かれていること
+    # Args:
+    #     max_videos: 取得する動画の最大数
+    # Returns: 動画の軽いデータの後半(辞書型)のリスト
     def get_video_light_play_datas_from_video_page_creator_videos_tab(self, max_videos: int = 100) -> List[Dict[str, str]]:
         logger.debug(f"動画の軽いデータの後半を取得中...")
 
@@ -584,6 +626,11 @@ class TikTokCrawler:
         return video_stats
 
 
+    # 動画の重いデータをパースおよび保存する
+    # Condition: 自由
+    # Args:
+    #     heavy_data: 動画の重いデータ(辞書型)
+    #     thumbnail_url: 動画のサムネイル画像のURL
     def parse_and_save_video_heavy_data(self, heavy_data: Dict, thumbnail_url: str):
         logger.debug(f"動画の重いデータをパースおよび保存中...: {heavy_data['video_url']}")
 
@@ -655,6 +702,11 @@ class TikTokCrawler:
         logger.debug(f"{prefix}を{csv_path}に出力しました: {len(data)}件")
 
 
+    # 動画の軽いデータをパースおよび保存する
+    # Condition: 自由
+    # Args:
+    #     light_like_datas: 動画の軽いデータの前半(辞書型)のリスト
+    #     light_play_datas: 動画の軽いデータの後半(辞書型)のリスト
     def parse_and_save_video_light_datas(self, light_like_datas: List[Dict], light_play_datas: List[Dict]):
         logger.debug(f"動画の軽いデータをパースおよび保存中...")
 
@@ -697,16 +749,19 @@ class TikTokCrawler:
         logger.info(f"動画の軽いデータをパースおよび保存しました: {len(light_like_datas)}件、うちplay_count_textが取れなかったもの: {play_count_not_found}件")
 
 
-
+    # ユーザーの動画データをクロールする
+    # Condition: 自由
+    # Args:
+    #     user: お気に入りユーザー(FavoriteUser)
+    #     light_or_heavy: "light"(軽いデータのみ), "heavy"(重いデータのみ), "both"(軽重両方)
+    #     max_videos_per_user: 1ユーザーあたりの動画数
+    #     recrawl: 既に重いデータを取得済みの動画を再取得するかどうか
     def crawl_user(self, user: FavoriteUser, light_or_heavy: str = "both", max_videos_per_user: int = 100, recrawl: bool = False):
-        # light_or_heavy: "light"(軽いデータのみ), "heavy"(重いデータのみ), "both"(軽重両方)
-        # max_videos_per_user: 1ユーザーあたりの動画数
-        # recrawl: 既に重いデータを取得済みの動画を再取得するかどうか
         logger.info(f"ユーザー @{user.favorite_user_username} の{light_or_heavy}データのクロールを開始")
 
         try:
             self.navigate_to_user_page(user.favorite_user_username)
-        except self.UserNotFoundException:
+        except self.TikTokUserNotFoundException:
             logger.info(f"ユーザー @{user.favorite_user_username} は存在しないので、このユーザーに対するクロールを中断します")
             return False # ユーザー単位でしか問題にならないエラーなのでここで処置完了としてよい
         except Exception:
@@ -764,6 +819,13 @@ class TikTokCrawler:
         logger.info(f"ユーザー @{user.favorite_user_username} の{light_or_heavy}データのクロールを完了しました")
 
 
+    # お気に入りユーザーたちの動画データをクロールする
+    # Condition: 自由
+    # Args:
+    #     light_or_heavy: "light"(軽いデータのみ), "heavy"(重いデータのみ), "both"(軽重両方)
+    #     max_videos_per_user: 1ユーザーあたりの動画数
+    #     max_users: 1クロール対象のユーザー数
+    #     recrawl: 既に重いデータを取得済みの動画を再取得するかどうか
     def crawl_favorite_users(self, light_or_heavy: str = "both", max_videos_per_user: int = 100, max_users: int = 10, recrawl: bool = False):
         logger.info(f"クロール対象のお気に入りユーザー{max_users}件に対し{light_or_heavy}データのクロールを行います")
         favorite_users = self.favorite_user_repo.get_favorite_users(
