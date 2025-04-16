@@ -305,10 +305,17 @@ class TikTokCrawler:
                 logger.debug(f"目標以上の{current_items_count}件の画像要素を確認しました。スクロールを完了します。")
                 return True
             
-            # スクロール実行
+            # スクロールを3回に分けて実行
             try:
-                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight - 200);")
-                # ここ  window.scrollTo(0, document.body.scrollHeight - 200);  か  window.scrollTo(0, {top:1000,left:0,behavior:'smooth'});  どっちがいいかな
+                final_target_scroll = self.driver.execute_script("return document.body.scrollHeight - 200;")
+                current_scroll = self.driver.execute_script("return window.pageYOffset;")
+                scroll_step = (final_target_scroll - current_scroll) / 3
+                
+                for i in range(3):
+                    target_scroll = current_scroll + scroll_step * (i + 1)
+                    self.driver.execute_script(f"window.scrollTo({{top: {target_scroll}, left: 0, behavior: 'smooth'}});")
+                    self._random_sleep(0.3, 0.7)  # 各スクロールの間に少し待機
+                
             except TimeoutException:
                 logger.debug(f"これ以上スクロールできません。スクロールを中止します。{current_items_count}件の画像要素を確認しました")
                 return False
@@ -504,10 +511,18 @@ class TikTokCrawler:
                 logger.debug(f"目標以上の{current_items_count}件の画像要素を確認しました。スクロールを完了します。")
                 return True
             
-            # スクロール実行
+            # スクロールを3回に分けて実行
             try:
                 element = self.driver.find_element(By.CSS_SELECTOR, "div[class*='css-1xyzrsf-DivVideoListContainer e1o3lsy81']")
-                self.driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight - 200;", element)
+                final_target_scroll = self.driver.execute_script("return arguments[0].scrollHeight - 200;", element)
+                current_scroll = self.driver.execute_script("return arguments[0].scrollTop;", element)
+                scroll_step = (final_target_scroll - current_scroll) / 3
+                
+                for i in range(3):
+                    target_scroll = current_scroll + scroll_step * (i + 1)
+                    self.driver.execute_script(f"arguments[0].scrollTo({{top: {target_scroll}, left: 0, behavior: 'smooth'}});", element)
+                    self._random_sleep(0.3, 0.7)  # 各スクロールの間に少し待機
+
             except TimeoutException:
                 logger.debug(f"これ以上スクロールできません。スクロールを中止します。{current_items_count}件の画像要素を確認しました")
                 return False
