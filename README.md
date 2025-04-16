@@ -53,11 +53,12 @@ DB_NAME=tiktok_crawler
 python -m src.database.create_tables
 ```
 
-2. [テスト時] テストデータを投入
+2. [テスト時] サンプルデータを投入
 src/database/seed_data.py のcrawler_accountsの username, password をあなたのものにしてから
 ```bash
-python -m src.database.seed_data
+python -m src.database.seed_data --max-users 10
 ```
+max-usersはサンプルユーザー何人入れるか。コーナーケースのテストも欲しいので5人以上入れてね
 
 3. [テスト時] クローラーを実行してみる
 ```bash
@@ -97,7 +98,7 @@ python -m src.database.show_data
 - favorite_user_username: str (クロール対象のTikTokアカウント名)
 - crawler_account_id: int | null (FK -> crawler_accounts.id、未割り当ての場合はnull)
 - favorite_user_is_alive: bool (アカウントの有効性)
-- crawl_priority: int (クロール優先度)
+- crawl_priority: int (クロール優先度)(未使用、システムがデカくなったら必要になってくると思う)
 - last_crawled_at: datetime | null (最終クロール日時、未クロールの場合はnull)
 
 ### video_light_raw_data: 動画の軽いデータ

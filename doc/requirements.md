@@ -107,7 +107,7 @@ reCAPTCHA的なの出たら検知して対応するのも要るわな それか�
 - favorite_user_username: str (クロール対象のTikTokアカウント名)
 - crawler_account_id: int | null (FK -> crawler_accounts.id、未割り当ての場合はnull)
 - favorite_user_is_alive: bool (Index, アカウントの有効性)
-- crawl_priority: int (Index, クロール優先度)
+- crawl_priority: int (Index, クロール優先度)(未使用、システムがデカくなったら必要になってくると思う)
 - last_crawled_at: datetime | null (Index, 最終クロール日時、未クロールの場合はnull)
 
 ### video_heavy_raw_data: 動画の重いデータ
@@ -156,12 +156,8 @@ crawling_algorithm次第で得られる情報が異なるので、こんだけ�
 
 
 # TODO
-- thumbnail_url が 時折無を表すgifになる問題
-    - やっぱマウスオーバーでリンク出せないもんかね
-    - しっかり画像ロードされるの確認してスクロールしかないかね
-
-# そのうちやること
 - 既存システムに統合
     - db構造変わるぞ～
-    - 特に2週間以上古い動画を見捨てる件
-        - うちは2週間と言わず最新100本くらい集めてDBに突っ込むんで、不要データの削除は別プロセスでやることにします
+- 統合して動くようになったあとやること
+    - クローラー外で、2週間以上古い動画を見捨てる件とかの実装が必要
+    - クローラー外で、サムネを保存するとかの実装が必要(thumbnail_urlは1ヶ月だけ有効なのでそのうちに)
