@@ -115,6 +115,10 @@ def insert_favorite_users(db: Database, crawler_account_id: int):
             "username": "kiritampo",  # きりたんぽ
             "priority": 100
         },
+        {
+            "username": "michaeljackton.official",  # マイケル・ジャクトン(のusernameに背乗りしてる謎の外人) 3本しか動画ないのがコーナーケースのテストに使えるので使う
+            "priority": 100
+        },
     ]
 
     

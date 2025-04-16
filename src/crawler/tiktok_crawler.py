@@ -297,16 +297,20 @@ class TikTokCrawler:
             current_items = self.driver.find_elements(By.CSS_SELECTOR, "div[data-e2e='user-post-item']")
             current_items_count = len(current_items)
             current_images_count = len([item for item in current_items
-                if item.find_elements(By.CSS_SELECTOR, "picture source[type='image/avif']")]) # ここもimg[src*='tiktokcdn']でいいかもね(未検証)
-            
+                if item.find_elements(By.CSS_SELECTOR, "img[src*='tiktokcdn']")])
+
             # 必要な数に達したら終了
-            if current_items_count >= need_items_count: return True
+            logger.debug(f"{current_items_count}件の画像要素を確認しました。")
+            if current_items_count >= need_items_count:
+                logger.debug(f"目標以上の{current_items_count}件の画像要素を確認しました。スクロールを完了します。")
+                return True
             
             # スクロール実行
             try:
-                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight * 0.6);")
+                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight - 200);")
+                # ここ  window.scrollTo(0, document.body.scrollHeight - 200);  か  window.scrollTo(0, {top:1000,left:0,behavior:'smooth'});  どっちがいいかな
             except TimeoutException:
-                logger.debug("これ以上スクロールできません")
+                logger.debug(f"これ以上スクロールできません。スクロールを中止します。{current_items_count}件の画像要素を確認しました")
                 return False
             
             try:
@@ -317,17 +321,18 @@ class TikTokCrawler:
                 # 新しい画像がロードされるまで待機
                 wait.until(lambda driver: len([
                     item for item in driver.find_elements(By.CSS_SELECTOR, "div[data-e2e='user-post-item']")
-                    if item.find_elements(By.CSS_SELECTOR, "picture source[type='image/avif']")
+                    if item.find_elements(By.CSS_SELECTOR, "img[src*='tiktokcdn']")
                 ]) > current_images_count)
                 last_load_failed = False
                 
             except TimeoutException:
                 if last_load_failed:
-                    logger.warning("新しい画像要素のロードが2回続けてタイムアウトしました。スクロールを中止します。", exc_info=True)
+                    logger.warning(f"新しい画像要素のロードが2回続けてタイムアウトしました。{current_items_count}件の画像要素を確認しました。スクロールを中止します。", exc_info=True)
                     return False
-                logger.warning("新しい画像要素のロードがタイムアウトしました。もう1度だけスクロールを試みます。")
+                logger.warning(f"新しい画像要素のロードがタイムアウトしました。{current_items_count}件の画像要素を確認しました。もう1度だけスクロールを試みます。")
                 last_load_failed = True
                 
+        logger.debug(f"スクロール回数の上限に達しました。{current_items_count}件の画像要素を確認しました。スクロールを完了します。")
         return True
 
 
@@ -338,7 +343,7 @@ class TikTokCrawler:
         self.scroll_user_page(max_videos)
         video_elements = self.driver.find_elements(By.CSS_SELECTOR, "[data-e2e='user-post-item']")
 
-        logger.debug(f"{len(video_elements)}件走査します")
+        logger.debug(f"動画の軽いデータの前半を求めて{len(video_elements[:max_videos])}本の動画要素を走査します")
         for video_element in video_elements[:max_videos]:
             try:
                 # 動画のURLを取得
@@ -354,7 +359,7 @@ class TikTokCrawler:
                 
                 # サムネイル画像と動画の代替テキストを取得
                 thumbnail_element = video_element.find_element(By.CSS_SELECTOR, "img")
-                thumbnail_url = thumbnail_element.get_attribute("src") # 50件中16件くらい src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" になって後半とのマージができなくなる問題があったけど、画面最大化してスクロールの時間ちょっと伸ばしたら治った
+                thumbnail_url = thumbnail_element.get_attribute("src")
                 video_alt_info_text = thumbnail_element.get_attribute("alt")
                 
                 # いいね数を取得（表示形式のまま）
@@ -377,6 +382,27 @@ class TikTokCrawler:
         
         logger.debug(f"動画の軽いデータの前半を取得しました: {len(video_stats)}件")
         return video_stats
+
+    
+    def get_latest_video_url_from_user_page(self):
+        logger.debug(f"ピン留めされていない動画の中で最も新しいもののURLを取得中...")
+        
+        # 動画要素を全て取得
+        video_elements = self.driver.find_elements(By.CSS_SELECTOR, "[data-e2e='user-post-item']")
+        
+        for video_element in video_elements:
+            try:
+                video_element.find_element(By.CSS_SELECTOR, "[data-e2e='video-card-badge']")
+                continue
+            except NoSuchElementException:
+                video_url = video_element.find_element(By.TAG_NAME, "a").get_attribute("href")
+                logger.debug(f"ピン留めされていない動画の中で最も新しいもののURLを取得しました: {video_url}")
+                return video_url
+
+        video_element = video_elements[0]
+        video_url = video_element.find_element(By.TAG_NAME, "a").get_attribute("href")
+        logger.warning(f"ピン留めされていない動画が見つかりませんでした。代わりにピン留めされている適当な動画のURLを返します。: {video_url}")
+        return video_url
 
 
     def navigate_to_video_page(self, video_url: str, link_should_be_in_page: bool = True):
@@ -473,14 +499,17 @@ class TikTokCrawler:
                 if item.find_elements(By.CSS_SELECTOR, "img[src*='tiktokcdn']")])
             
             # 必要な数に達したら終了
-            if current_items_count >= need_items_count: return True
+            logger.debug(f"{current_items_count}件の画像要素を確認しました。")
+            if current_items_count >= need_items_count:
+                logger.debug(f"目標以上の{current_items_count}件の画像要素を確認しました。スクロールを完了します。")
+                return True
             
             # スクロール実行
             try:
                 element = self.driver.find_element(By.CSS_SELECTOR, "div[class*='css-1xyzrsf-DivVideoListContainer e1o3lsy81']")
-                self.driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight * 0.6;", element)
+                self.driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight - 200;", element)
             except TimeoutException:
-                logger.debug("これ以上スクロールできません")
+                logger.debug(f"これ以上スクロールできません。スクロールを中止します。{current_items_count}件の画像要素を確認しました")
                 return False
             
             try:
@@ -498,11 +527,12 @@ class TikTokCrawler:
                 
             except TimeoutException:
                 if last_load_failed:
-                    logger.warning("新しい画像要素のロードが2回続けてタイムアウトしました。スクロールを中止します。", exc_info=True)
+                    logger.warning(f"新しい画像要素のロードが2回続けてタイムアウトしました。スクロールを中止します。{current_items_count}件の画像要素を確認しました", exc_info=True)
                     return False
-                logger.warning("新しい画像要素のロードがタイムアウトしました。もう1度だけスクロールを試みます。")
+                logger.warning(f"新しい画像要素のロードがタイムアウトしました。もう1度だけスクロールを試みます。{current_items_count}件の画像要素を確認しています")
                 last_load_failed = True
                 
+        logger.debug(f"スクロール回数の上限に達しました。{current_items_count}件の画像要素を確認しました。スクロールを完了します。")
         return True
 
 
@@ -514,7 +544,7 @@ class TikTokCrawler:
         self.scroll_video_page_creator_videos_tab(max_videos)
         video_elements = self.driver.find_elements(By.CSS_SELECTOR, "[class='css-eqiq8z-DivItemContainer eadndt66']")
 
-        logger.debug(f"{len(video_elements)}件走査します")
+        logger.debug(f"動画の軽いデータの後半を求めて{len(video_elements)}本の動画要素を走査します")
         for video_element in video_elements:
             try:
                 # サムネイル画像を取得
@@ -589,8 +619,33 @@ class TikTokCrawler:
         logger.info(f"動画の重いデータをパースおよび保存しました: {data.video_url}")
 
 
+    def _save_debug_csv(self, data: List[Dict], prefix: str) -> None:
+        """デバッグ用にデータをCSVファイルとして出力する"""
+        import csv
+        import os
+        from datetime import datetime
+
+        if not data:
+            return
+
+        debug_dir = os.path.join("output", "debug")
+        os.makedirs(debug_dir, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        csv_path = os.path.join(debug_dir, f"{prefix}_{timestamp}.csv")
+
+        with open(csv_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=data[0].keys())
+            writer.writeheader()
+            writer.writerows(data)
+        logger.debug(f"{prefix}を{csv_path}に出力しました: {len(data)}件")
+
+
     def parse_and_save_video_light_datas(self, light_like_datas: List[Dict], light_play_datas: List[Dict]):
         logger.debug(f"動画の軽いデータをパースおよび保存中...")
+
+        # デバッグ用：CSVファイルに出力
+        self._save_debug_csv(light_like_datas, "light_like_datas")
+        self._save_debug_csv(light_play_datas, "light_play_datas")
 
         # サムネイルURLのエッセンスをキーに、再生数をマッピング
         play_count_map = {}
@@ -646,10 +701,11 @@ class TikTokCrawler:
 
         if light_or_heavy == "light" or light_or_heavy == "both":
             logger.info(f"ユーザー @{user.favorite_user_username} の軽いデータのクロールを開始")
-            first_url = light_like_datas[0]["video_url"]
+
+            first_url = self.get_latest_video_url_from_user_page()
             self.navigate_to_video_page(first_url)
             self.navigate_to_video_page_creator_videos_tab()
-            light_play_datas = self.get_video_light_play_datas_from_video_page_creator_videos_tab(max_videos_per_user+12) # ピン留めとかphoto投稿の影響でちゃんと一対一対応してるか怪しいんでね
+            light_play_datas = self.get_video_light_play_datas_from_video_page_creator_videos_tab(max_videos_per_user+10) # 一対一対応してるか怪しいしほんのりバッファ
             
             self.parse_and_save_video_light_datas(light_like_datas, light_play_datas)
             self.navigate_to_user_page_from_video_page()
