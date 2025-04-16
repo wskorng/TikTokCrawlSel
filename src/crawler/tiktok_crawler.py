@@ -322,7 +322,7 @@ class TikTokCrawler:
             logger.debug("user-pageが見つかったにも関わらずuser-post-itemが見つかりません。ユーザーが削除されている可能性があるので調査します。")
             title = self.driver.title
             if title.startswith("このアカウントは見つかりませんでした"):
-                logger.warning(f"ユーザー @{username} は削除されたようです。データベースのis_aliveをFalseに更新します。")
+                logger.info(f"ユーザー @{username} は削除されたようです。データベースのis_aliveをFalseに更新します。")
                 self.favorite_user_repo.update_favorite_user_is_alive(username, False)
                 raise self.UserNotFoundException(f"ユーザー @{username} は存在しません")
             else:
@@ -598,7 +598,7 @@ class TikTokCrawler:
         try:
             self.navigate_to_user_page(user.favorite_user_username)
         except self.UserNotFoundException:
-            logger.error(f"ユーザー @{user.favorite_user_username} は存在しないので、このユーザーに対するクロールを中断します")
+            logger.info(f"ユーザー @{user.favorite_user_username} は存在しないので、このユーザーに対するクロールを中断します")
             return False # ユーザー単位でしか問題にならないエラーなのでここで処置完了としてよい
         except Exception:
             raise
@@ -613,9 +613,9 @@ class TikTokCrawler:
             light_play_datas = self.get_video_light_play_datas_from_video_page_creator_videos_tab(max_videos_per_user+12) # ピン留めとかphoto投稿の影響でちゃんと一対一対応してるか怪しいんでね
             
             self.parse_and_save_video_light_datas(light_like_datas, light_play_datas)
-            logger.info(f"ユーザー @{user.favorite_user_username} の軽いデータのクロールを完了しました。重いデータのクロールに入ります")
-
             self.navigate_to_user_page_from_video_page()
+            logger.info(f"ユーザー @{user.favorite_user_username} の軽いデータのクロールを完了しました。")
+
         
         if light_or_heavy == "heavy" or light_or_heavy == "both":
             logger.info(f"ユーザー @{user.favorite_user_username} の重いデータのクロールを開始")
@@ -642,10 +642,15 @@ class TikTokCrawler:
                     logger.exception(f"動画 {light_like_data['video_url']} の重いデータのクロール中に失敗。スキップします")
                     continue
 
+            logger.info(f"ユーザー @{user.favorite_user_username} の重いデータのクロールを完了しました")
+
+        logger.debug(f"ユーザー @{user.favorite_user_username} のlast_crawledを更新します")
         self.favorite_user_repo.update_favorite_user_last_crawled(
             user.favorite_user_username,
             datetime.now()
         )
+        logger.debug(f"ユーザー @{user.favorite_user_username} のlast_crawledを更新しました")
+
         logger.info(f"ユーザー @{user.favorite_user_username} の{light_or_heavy}データのクロールを完了しました")
 
 
