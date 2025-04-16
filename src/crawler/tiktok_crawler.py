@@ -409,7 +409,7 @@ class TikTokCrawler:
     # ピン留めされていない動画の中で最も新しいもののURLを取得する
     # Condition: ユーザーページが開かれていること
     # Returns: 動画のURL
-    # 単に最も上にある動画だとピン留めされた動画の可能性があり、その場合video_page_creator_videos_tabが新着動画のそれではなくなる
+    # この関数が必要な理由は、単に最も上にある動画だとピン留めされた動画の可能性があり、その場合video_page_creator_videos_tabが新着動画のそれではなくなるため。
     def get_latest_video_url_from_user_page(self) -> str:
         logger.debug(f"ピン留めされていない動画の中で最も新しいもののURLを取得中...")
         

@@ -6,8 +6,12 @@ from dotenv import load_dotenv
 
 logger = setup_logger(__name__)
 
+# クローラーアカウントのサンプルデータを投入
+# Args:
+#     db: データベース接続
+# Returns:
+#     クローラーアカウントIDのリスト
 def insert_crawler_accounts(db: Database) -> List[int]:
-    """クローラーアカウントのテストデータを投入"""
     crawler_accounts = [
         {
             "username": "wskorng+01@gmail.com",
@@ -40,42 +44,45 @@ def insert_crawler_accounts(db: Database) -> List[int]:
     
     return crawler_account_ids
 
-def insert_favorite_users(db: Database, crawler_account_id: int):
-    """お気に入りアカウントのテストデータを投入"""
+# お気に入りアカウントのサンプルデータを投入
+# Args:
+#     db: データベース接続
+#     crawler_account_id: クローラーアカウントID
+#     max_users: 投入するユーザー数の上限（Noneの場合は全て）
+# Returns:
+#     お気に入りアカウントIDのリスト
+def insert_favorite_users(db: Database, crawler_account_id: int, max_users: int = None):
     accounts = [
         {
-            "username": "fukada0318",  # 深田えいみ 3つもピン留めしてる
-            "priority": 100
-        },
-        {
-            "username": "michaeljackton.official",  # マイケル・ジャクトン(のusernameに背乗りしてる謎の外人) 3本しか動画ない
-            "priority": 100
-        },
-        {
-            "username": "123987443",  # Marina  死んでる
-            "priority": 100
-        },
-        {
-            "username": "cutie_street",  # CUTIE STREET
-            "priority": 100
-        }
-    ]
-
-    """accounts = [
-        {
             "username": "cutie_street",  # CUTIE STREET
             "priority": 100
         },
         {
-            "username": "123987443",  # Marina  死んでる
+            "username": "fukada0318",  # 深田えいみ ※3つもピン留めしてる
             "priority": 100
         },
         {
-            "username": "bayashi.tiktok",  # バヤシ（Bayashi）
+            "username": "michaeljackton.official",  # マイケル・ジャクトンのusernameに背乗りしてる謎の外人 ※3本しか動画ない
             "priority": 100
         },
         {
-            "username": "junya1gou",  # じゅんや（Junya）
+            "username": "123987443",  # Marina ※死んでる
+            "priority": 100
+        },
+        {
+            "username": "zachking",  # Zach King ※ 世界一再生数が多い動画がピン留めされている
+            "priority": 100
+        },
+        {
+            "username": "twice_tiktok_official",  # Twice
+            "priority": 100
+        },
+        {
+            "username": "bayashi.tiktok",  # バヤシ
+            "priority": 100
+        },
+        {
+            "username": "junya1gou",  # じゅんや
             "priority": 100
         },
         {
@@ -87,11 +94,7 @@ def insert_favorite_users(db: Database, crawler_account_id: int):
             "priority": 100
         },
         {
-            "username": "fukada0318",  # 深田えいみ (3つもピン留めしてる)
-            "priority": 100
-        },
-        {
-            "username": "o_jas514",  # おじゃす（Ojas）
+            "username": "o_jas514",  # おじゃす
             "priority": 100
         },
         {
@@ -103,7 +106,7 @@ def insert_favorite_users(db: Database, crawler_account_id: int):
             "priority": 100
         },
         {
-            "username": "buzzmagicianshin",  # Buzz Magician Shin
+            "username": "buzzmagicianshin",  # Buzz Magician Shin ※死んでる
             "priority": 100
         },
         {
@@ -119,7 +122,7 @@ def insert_favorite_users(db: Database, crawler_account_id: int):
             "priority": 100
         },
         {
-            "username": "chamitan_09082424",  # 古川優奈（ゆうちゃみ）
+            "username": "chamitan_09082424",  # ゆうちゃみ
             "priority": 100
         },
         {
@@ -130,14 +133,13 @@ def insert_favorite_users(db: Database, crawler_account_id: int):
             "username": "kiritampo",  # きりたんぽ
             "priority": 100
         },
-        {
-            "username": "michaeljackton.official",  # マイケル・ジャクトン(のusernameに背乗りしてる謎の外人) 3本しか動画ないのがコーナーケースのテストに使えるので使う
-            "priority": 100
-        },
-    ]"""
+    ]
 
     
-    for account in accounts:
+    # max_usersが指定されている場合は、その数だけアカウントを選択
+    target_accounts = accounts[:max_users] if max_users is not None else accounts
+    
+    for account in target_accounts:
         query = """
             INSERT INTO favorite_users (
                 favorite_user_username,
@@ -157,10 +159,11 @@ def insert_favorite_users(db: Database, crawler_account_id: int):
                 account["priority"]
             )
         )
-        logger.info(f"お気に入りアカウント {account['username']} を追加しました（クローラーアカウントID: {crawler_account_id}）")
+    
+    logger.info(f"お気に入りアカウントを{len(target_accounts)}件追加しました")
 
+# サンプル動画データの投入
 def insert_sample_video_data(db: Database):
-    """サンプルの動画データを投入"""
     # 重いデータ（詳細情報）
     heavy_data = {
         "video_id": "7483836569720245511",
@@ -280,8 +283,10 @@ def insert_sample_video_data(db: Database):
 
 
 
-def main():
-    """テストデータの投入を実行"""
+# テストデータの投入を実行
+# Args:
+#     max_users: 投入するお気に入りユーザー数の上限（Noneの場合は全て）
+def main(max_users: int = None):
     load_dotenv()
     with Database() as db:
         logger.info("テストデータの投入を開始します")
@@ -292,13 +297,19 @@ def main():
             raise ValueError("クローラーアカウントの投入に失敗しました")
         
         # お気に入りアカウントの投入（最初のクローラーアカウントに紐付け）
-        insert_favorite_users(db, crawler_account_ids[0])
+        insert_favorite_users(db, crawler_account_ids[0], max_users)
         
         # サンプル動画データの投入
         insert_sample_video_data(db)
         
         logger.info("テストデータの投入が完了しました")
-        
+
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="テストデータを投入します")
+    parser.add_argument("--max-users", type=int, help="投入するお気に入りユーザー数の上限（指定がない場合は全て）")
+    
+    args = parser.parse_args()
+    main(max_users=args.max_users)
