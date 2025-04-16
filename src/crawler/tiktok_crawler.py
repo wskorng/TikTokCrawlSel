@@ -213,55 +213,9 @@ class TikTokCrawler:
         if self.selenium_manager:
             self.selenium_manager.quit_driver()
             
+
     def _random_sleep(self, min_seconds: float = 1.0, max_seconds: float = 3.0):
         time.sleep(random.uniform(min_seconds, max_seconds))
-
-    def scroll_page(self, scroll_count: int = 3):
-        """Window全体をスクロールする"""
-        try:
-            for _ in range(scroll_count):
-                self.driver.execute_script(
-                    "window.scrollTo(0, document.body.scrollHeight);"
-                )
-                self._random_sleep(3.0, 4.0) # TODO ここちゃんと画像表示をwaitすればthumbnail問題治るんじゃね
-                
-        except Exception:
-            logger.warning(f"ページのスクロールに失敗")
-    
-    def scroll_element(self, element_selector: str, scroll_count: int = 3):
-        """特定の要素内をスクロールする"""
-        try:
-            for _ in range(scroll_count):
-                # 要素を取得
-                element = self.driver.find_element(By.CSS_SELECTOR, element_selector)
-                
-                # 要素の現在の高さを取得
-                current_height = self.driver.execute_script(
-                    "return arguments[0].scrollHeight;",
-                    element
-                )
-                
-                # 要素を下にスクロール
-                self.driver.execute_script(
-                    "arguments[0].scrollTop = arguments[0].scrollHeight;",
-                    element
-                )
-                
-                # スクロール後に少し待機
-                self._random_sleep(2.0, 3.0)
-                
-                # 新しい高さを取得
-                new_height = self.driver.execute_script(
-                    "return arguments[0].scrollHeight;",
-                    element
-                )
-                
-                # 高さが変わっていない場合は、もうスクロールできない
-                if new_height == current_height:
-                    break
-                    
-        except Exception:
-            logger.warning(f"要素のスクロールに失敗: {element_selector}")
 
     def _login(self): # TikTokにログインする
         logger.info(f"クロール用アカウント{self.crawler_account.username}でTikTokにログイン中...")
@@ -333,14 +287,56 @@ class TikTokCrawler:
         logger.debug(f"ユーザー @{username} のページに移動しました")
             
 
+    def scroll_user_page(self, need_items_count: int = 100, max_scroll_attempts: int = None) -> bool:
+        logger.debug(f"{need_items_count}件の画像要素を目標にユーザーページをスクロールします...")
+
+        last_load_failed = False
+        for _ in range(max_scroll_attempts or need_items_count // 2):
+            self._random_sleep(1.0, 2.0)
+            # 現在の要素と画像の数を取得
+            current_items = self.driver.find_elements(By.CSS_SELECTOR, "div[data-e2e='user-post-item']")
+            current_items_count = len(current_items)
+            current_images_count = len([item for item in current_items
+                if item.find_elements(By.CSS_SELECTOR, "picture source[type='image/avif']")]) # ここもimg[src*='tiktokcdn']でいいかもね(未検証)
+            
+            # 必要な数に達したら終了
+            if current_items_count >= need_items_count: return True
+            
+            # スクロール実行
+            try:
+                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight * 0.6);")
+            except TimeoutException:
+                logger.debug("これ以上スクロールできません")
+                return False
+            
+            try:
+                wait = WebDriverWait(self.driver, 10)
+                #新しい要素がロードされるまで待機
+                wait.until(lambda driver: len(driver.find_elements(By.CSS_SELECTOR, "div[data-e2e='user-post-item']")) > current_items_count)
+                
+                # 新しい画像がロードされるまで待機
+                wait.until(lambda driver: len([
+                    item for item in driver.find_elements(By.CSS_SELECTOR, "div[data-e2e='user-post-item']")
+                    if item.find_elements(By.CSS_SELECTOR, "picture source[type='image/avif']")
+                ]) > current_images_count)
+                last_load_failed = False
+                
+            except TimeoutException:
+                if last_load_failed:
+                    logger.warning("新しい画像要素のロードが2回続けてタイムアウトしました。スクロールを中止します。", exc_info=True)
+                    return False
+                logger.warning("新しい画像要素のロードがタイムアウトしました。もう1度だけスクロールを試みます。")
+                last_load_failed = True
+                
+        return True
+
+
     def get_video_light_like_datas_from_user_page(self, max_videos: int = 100) -> List[Dict[str, str]]:
         logger.debug(f"動画の軽いデータの前半を取得中...")
         video_stats = []
-        # 動画要素を取得
-        self.scroll_page(max_videos // 16)
-        video_elements = self.wait.until(
-            EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[data-e2e='user-post-item']"))
-        )
+        
+        self.scroll_user_page(max_videos)
+        video_elements = self.driver.find_elements(By.CSS_SELECTOR, "[data-e2e='user-post-item']")
 
         logger.debug(f"{len(video_elements)}件走査します")
         for video_element in video_elements[:max_videos]:
@@ -464,16 +460,59 @@ class TikTokCrawler:
         logger.debug("動画ページの「クリエイターの動画」タブに移動しました")
 
 
+    def scroll_video_page_creator_videos_tab(self, need_items_count: int = 100, max_scroll_attempts: int = None) -> bool:
+        logger.debug(f"{need_items_count}件の画像要素を目標にクリエイターの動画タブをスクロールします...")
+
+        last_load_failed = False
+        for _ in range(max_scroll_attempts or need_items_count // 2):
+            self._random_sleep(1.0, 2.0)
+            # 現在の要素と画像の数を取得
+            current_items = self.driver.find_elements(By.CSS_SELECTOR, "[class='css-eqiq8z-DivItemContainer eadndt66']")
+            current_items_count = len(current_items)
+            current_images_count = len([item for item in current_items
+                if item.find_elements(By.CSS_SELECTOR, "img[src*='tiktokcdn']")])
+            
+            # 必要な数に達したら終了
+            if current_items_count >= need_items_count: return True
+            
+            # スクロール実行
+            try:
+                element = self.driver.find_element(By.CSS_SELECTOR, "div[class*='css-1xyzrsf-DivVideoListContainer e1o3lsy81']")
+                self.driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight * 0.6;", element)
+            except TimeoutException:
+                logger.debug("これ以上スクロールできません")
+                return False
+            
+            try:
+                wait = WebDriverWait(self.driver, 10)
+                # 新しい要素がロードされるのを待つ
+                wait.until(lambda driver: len(driver.find_elements(
+                    By.CSS_SELECTOR, "[class='css-eqiq8z-DivItemContainer eadndt66']")) > current_items_count)
+                
+                # 新しい画像がロードされるまで待機
+                wait.until(lambda driver: len([
+                    item for item in driver.find_elements(By.CSS_SELECTOR, "[class='css-eqiq8z-DivItemContainer eadndt66']")
+                    if item.find_elements(By.CSS_SELECTOR, "img[src*='tiktokcdn']")
+                ]) > current_images_count)
+                last_load_failed = False
+                
+            except TimeoutException:
+                if last_load_failed:
+                    logger.warning("新しい画像要素のロードが2回続けてタイムアウトしました。スクロールを中止します。", exc_info=True)
+                    return False
+                logger.warning("新しい画像要素のロードがタイムアウトしました。もう1度だけスクロールを試みます。")
+                last_load_failed = True
+                
+        return True
+
+
     def get_video_light_play_datas_from_video_page_creator_videos_tab(self, max_videos: int = 100) -> List[Dict[str, str]]:
-        # max_videosはあくまで目安。動画要素を取得範囲のスクロール幅をコントロールするだけで、実際に取得する動画数は制限されない
         logger.debug(f"動画の軽いデータの後半を取得中...")
 
         video_stats = []
         # クリエイターの動画一覧をスクロール
-        self.scroll_element("div[class*='css-1xyzrsf-DivVideoListContainer e1o3lsy81']", max_videos // 12)
-        video_elements = self.wait.until(
-            EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[class='css-eqiq8z-DivItemContainer eadndt66']"))
-        )
+        self.scroll_video_page_creator_videos_tab(max_videos)
+        video_elements = self.driver.find_elements(By.CSS_SELECTOR, "[class='css-eqiq8z-DivItemContainer eadndt66']")
 
         logger.debug(f"{len(video_elements)}件走査します")
         for video_element in video_elements:
@@ -671,6 +710,7 @@ class TikTokCrawler:
                 continue
         
         logger.info(f"クロール対象のお気に入りユーザー{len(favorite_users)}件に対し{light_or_heavy}データのクロールを完了しました")
+
 
 
 def main():
